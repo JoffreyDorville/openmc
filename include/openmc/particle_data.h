@@ -54,6 +54,8 @@ struct SourceSite {
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
+  double lifetimes[IFP_MAX_N_GENERATION];
+  int ifp_n_generation {0};
 };
 
 //! State of a particle used for particle track files
