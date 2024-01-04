@@ -217,6 +217,7 @@ void Particle::event_advance()
     coord(j).r += distance * coord(j).u;
   }
   this->time() += distance / this->speed();
+  this->lifetime() += distance / this->speed();
 
   // Kill particle if its time exceeds the cutoff
   bool hit_time_boundary = false;
@@ -224,6 +225,7 @@ void Particle::event_advance()
   if (time() > time_cutoff) {
     double dt = time() - time_cutoff;
     time() = time_cutoff;
+    lifetime() = time_cutoff;
 
     double push_back_distance = speed() * dt;
     this->move_distance(-push_back_distance);
