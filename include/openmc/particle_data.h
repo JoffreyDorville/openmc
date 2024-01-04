@@ -268,6 +268,11 @@ private:
   double time_ {0.0};      //!< time in [s]
   double time_last_ {0.0}; //!< previous time in [s]
 
+  // Iterated Fission Probability helpers
+  double lifetime_ {0.0};                   //!< neutron lifetime [s]
+  double lifetimes_[IFP_MAX_N_GENERATION];  //!< previous neutron lifetimes [s]
+  int ifp_n_generation_ {0};                //!< current number of generation stored
+
   // Other physical data
   Position r_last_current_; //!< coordinates of the last collision or
                             //!< reflective/periodic surface crossing for
@@ -404,6 +409,13 @@ public:
   double& time_last() { return time_last_; }
   const double& time_last() const { return time_last_; }
   bool alive() const { return wgt_ != 0.0; }
+
+  double& lifetime() { return lifetime_; }
+  const double& lifetime() const { return lifetime_; }
+  double& lifetimes(int i) { return lifetimes_[i]; }
+  double* lifetimes() { return lifetimes_; }
+  int& ifp_n_generation() { return ifp_n_generation_; }
+  const int& ifp_n_generation() const { return ifp_n_generation_; }
 
   Position& r_last_current() { return r_last_current_; }
   const Position& r_last_current() const { return r_last_current_; }

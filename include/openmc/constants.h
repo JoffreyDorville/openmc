@@ -340,6 +340,9 @@ enum class RunMode {
   VOLUME
 };
 
+// Maximum number of generation for IFP
+constexpr int IFP_MAX_N_GENERATION {15};
+
 //==============================================================================
 // Geometry Constants
 
