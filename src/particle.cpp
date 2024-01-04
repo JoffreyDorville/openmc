@@ -105,6 +105,7 @@ void Particle::from_source(const SourceSite* src)
   n_collision() = 0;
   fission() = false;
   zero_flux_derivs();
+  lifetime() = 0.0;
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -126,6 +127,10 @@ void Particle::from_source(const SourceSite* src)
   E_last() = E();
   time() = src->time;
   time_last() = src->time;
+  for (int i = 0; i < src->ifp_n_generation; i++) {
+    lifetimes(i) = src->lifetimes[i];
+  }
+  ifp_n_generation() = src->ifp_n_generation;
 }
 
 void Particle::event_calculate_xs()

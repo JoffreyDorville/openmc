@@ -206,6 +206,23 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     site.progeny_id = p.n_progeny()++;
     site.surf_id = 0;
 
+    // Iterated Fission Probability (IFP) method
+    int idx = p.ifp_n_generation();
+    if (idx < IFP_MAX_N_GENERATION) {
+      for (int i = 0; i < idx; i++) {
+        site.lifetimes[i] = p.lifetimes(i);
+      }
+      site.lifetimes[idx] = p.lifetime();
+      site.ifp_n_generation = p.ifp_n_generation() + 1;
+    } else if (idx == IFP_MAX_N_GENERATION) {
+      for (int i = 0; i < idx-1; i++) {
+        site.lifetimes[i] = p.lifetimes(i+1);
+      }
+      site.lifetimes[idx-1] = p.lifetime();
+    } else {
+      fatal_error("WIP: was not expecting that...");
+    }
+
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
 
