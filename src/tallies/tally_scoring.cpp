@@ -890,6 +890,18 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         score_fission_q(p, score_bin, tally, flux, i_nuclide, atom_density);
       break;
 
+    case SCORE_IFP_TIME_NUM:
+      if ((p.ifp_n_generation() == IFP_MAX_N_GENERATION) && (p.fission())) {
+        score = p.lifetimes(0) * p.wgt_last();
+      }
+      break;
+
+    case SCORE_IFP_DENOM:
+      if ((p.ifp_n_generation() == IFP_MAX_N_GENERATION) && (p.fission())) {
+        score = p.wgt_last();
+      }
+      break;
+
     case N_2N:
     case N_3N:
     case N_4N:
