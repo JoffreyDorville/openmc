@@ -160,7 +160,7 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   SourceSite b;
-  MPI_Aint disp[12];
+  MPI_Aint disp[13];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);
@@ -172,15 +172,16 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.parent_id, &disp[8]);
   MPI_Get_address(&b.progeny_id, &disp[9]);
   MPI_Get_address(&b.lifetimes, &disp[10]);
-  MPI_Get_address(&b.ifp_n_generation, &disp[11]);
-  for (int i = 11; i >= 0; --i) {
+  MPI_Get_address(&b.delayed_groups, &disp[11]);
+  MPI_Get_address(&b.ifp_n_generation, &disp[12]);
+  for (int i = 12; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
-  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, IFP_MAX_N_GENERATION, 1};
+  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, IFP_MAX_N_GENERATION, IFP_MAX_N_GENERATION, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG, MPI_DOUBLE, MPI_INT};
-  MPI_Type_create_struct(12, blocks, disp, types, &mpi::source_site);
+    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG, MPI_DOUBLE, MPI_INT, MPI_INT};
+  MPI_Type_create_struct(13, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 }
 #endif // OPENMC_MPI

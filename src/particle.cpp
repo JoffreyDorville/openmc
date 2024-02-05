@@ -129,6 +129,7 @@ void Particle::from_source(const SourceSite* src)
   time_last() = src->time;
   for (int i = 0; i < src->ifp_n_generation; i++) {
     lifetimes(i) = src->lifetimes[i];
+    delayed_groups(i) = src->delayed_groups[i];
   }
   ifp_n_generation() = src->ifp_n_generation;
 }
