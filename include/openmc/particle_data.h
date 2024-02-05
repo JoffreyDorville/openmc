@@ -271,9 +271,10 @@ private:
   double time_last_ {0.0}; //!< previous time in [s]
 
   // Iterated Fission Probability helpers
-  double lifetime_ {0.0};                   //!< neutron lifetime [s]
-  double lifetimes_[IFP_MAX_N_GENERATION];  //!< previous neutron lifetimes [s]
-  int ifp_n_generation_ {0};                //!< current number of generation stored
+  double lifetime_ {0.0};                    //!< neutron lifetime [s]
+  double lifetimes_[IFP_MAX_N_GENERATION];   //!< ancestors' lifetimes [s]
+  int delayed_groups_[IFP_MAX_N_GENERATION]; //!< ancestors' delayed groups
+  int ifp_n_generation_ {0};                 //!< current number of generation stored
 
   // Other physical data
   Position r_last_current_; //!< coordinates of the last collision or
@@ -416,6 +417,8 @@ public:
   const double& lifetime() const { return lifetime_; }
   double& lifetimes(int i) { return lifetimes_[i]; }
   double* lifetimes() { return lifetimes_; }
+  int& delayed_groups(int i) { return delayed_groups_[i]; }
+  int* delayed_groups() { return delayed_groups_; }
   int& ifp_n_generation() { return ifp_n_generation_; }
   const int& ifp_n_generation() const { return ifp_n_generation_; }
 
