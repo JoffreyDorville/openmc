@@ -219,6 +219,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         site.lifetimes[i] = p.lifetimes(i+1);
       }
       site.lifetimes[idx-1] = p.lifetime();
+      site.ifp_n_generation = p.ifp_n_generation();
     } else {
       fatal_error("WIP: was not expecting that...");
     }
