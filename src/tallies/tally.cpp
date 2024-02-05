@@ -586,6 +586,7 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case SCORE_IFP_TIME_NUM:
+    case SCORE_IFP_BETA_NUM:
     case SCORE_IFP_DENOM:
       estimator_ = TallyEstimator::COLLISION;
       break;

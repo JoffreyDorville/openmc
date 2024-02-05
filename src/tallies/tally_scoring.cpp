@@ -896,6 +896,14 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       }
       break;
 
+    case SCORE_IFP_BETA_NUM:
+      if ((p.type() == Type::neutron) && (p.fission()) && (p.ifp_n_generation() == IFP_MAX_N_GENERATION)) {
+        if (p.delayed_groups(0) > 0){
+          score = p.wgt_last();
+        }
+      }
+      break;
+
     case SCORE_IFP_DENOM:
       if ((p.type() == Type::neutron) && (p.fission()) && (p.ifp_n_generation() == IFP_MAX_N_GENERATION)) {
         score = p.wgt_last();
