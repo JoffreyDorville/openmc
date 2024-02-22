@@ -211,25 +211,27 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
     // Iterated Fission Probability (IFP) method
     // Needs to be done after the delayed group is found
-    int idx = p.ifp_n_generation();
-    if (idx < IFP_MAX_N_GENERATION) {
-      for (int i = 0; i < idx; i++) {
-        site.lifetimes[i] = p.lifetimes(i);
-        site.delayed_groups[i] = p.delayed_groups(i);
+    if (settings::iterated_fission_probability) {
+      int idx = p.ifp_n_generation();
+      if (idx < settings::ifp_n_generation) {
+        for (int i = 0; i < idx; i++) {
+          site.lifetimes(i) = p.lifetimes(i);
+          site.delayed_groups(i) = p.delayed_groups(i);
+        }
+        site.lifetimes(idx) = p.lifetime();
+        site.delayed_groups(idx) = site.delayed_group;
+        site.ifp_n_generation = p.ifp_n_generation() + 1;
+      } else if (idx == settings::ifp_n_generation) {
+        for (int i = 0; i < idx-1; i++) {
+          site.lifetimes(i) = p.lifetimes(i+1);
+          site.delayed_groups(i) = p.delayed_groups(i+1);
+        }
+        site.lifetimes(idx-1) = p.lifetime();
+        site.delayed_groups(idx-1) = site.delayed_group;
+        site.ifp_n_generation = p.ifp_n_generation();
+      } else {
+        fatal_error("WIP: was not expecting that...");
       }
-      site.lifetimes[idx] = p.lifetime();
-      site.delayed_groups[idx] = site.delayed_group;
-      site.ifp_n_generation = p.ifp_n_generation() + 1;
-    } else if (idx == IFP_MAX_N_GENERATION) {
-      for (int i = 0; i < idx-1; i++) {
-        site.lifetimes[i] = p.lifetimes(i+1);
-        site.delayed_groups[i] = p.delayed_groups(i+1);
-      }
-      site.lifetimes[idx-1] = p.lifetime();
-      site.delayed_groups[idx-1] = site.delayed_group;
-      site.ifp_n_generation = p.ifp_n_generation();
-    } else {
-      fatal_error("WIP: was not expecting that...");
     }
 
     // Store fission site in bank

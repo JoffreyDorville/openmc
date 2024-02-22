@@ -43,7 +43,29 @@ enum class ParticleType { neutron, photon, electron, positron };
 //! NOTE: This structure is also used on the python side, and is defined
 //! in lib/core.py. Changes made to the type here must also be made to the
 //! python defintion.
+//struct SourceSite {
+//  Position r;
+//  Direction u;
+//  double E;
+//  double time {0.0};
+//  double wgt {1.0};
+//  int delayed_group {0};
+//  int surf_id {0};
+//  ParticleType particle;
+//  int64_t parent_id;
+//  int64_t progeny_id;
+//  double lifetimes[IFP_MAX_N_GENERATION];
+//  int delayed_groups[IFP_MAX_N_GENERATION];
+//  int ifp_n_generation {0};
+//};
+
 struct SourceSite {
+  //==========================================================================
+  // Constructors
+  SourceSite();
+
+  //==========================================================================
+  // Data members
   Position r;
   Direction u;
   double E;
@@ -54,9 +76,21 @@ struct SourceSite {
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
-  double lifetimes[IFP_MAX_N_GENERATION];
-  int delayed_groups[IFP_MAX_N_GENERATION];
   int ifp_n_generation {0};
+
+  //==========================================================================
+  // Accessor methods
+
+  double& lifetimes(int i) { return lifetimes_[i]; }
+  const double& lifetimes(int i) const { return lifetimes_[i]; }
+  int& delayed_groups(int i) { return delayed_groups_[i]; }
+  const int& delayed_groups(int i) const { return delayed_groups_[i]; }
+
+  private:
+    //==========================================================================
+    // Data members
+    vector<double> lifetimes_;
+    vector<int> delayed_groups_;
 };
 
 //! State of a particle used for particle track files
@@ -271,11 +305,11 @@ private:
   double time_ {0.0};      //!< time in [s]
   double time_last_ {0.0}; //!< previous time in [s]
 
-  // Iterated Fission Probability helpers
-  double lifetime_ {0.0};                    //!< neutron lifetime [s]
-  double lifetimes_[IFP_MAX_N_GENERATION];   //!< ancestors' lifetimes [s]
-  int delayed_groups_[IFP_MAX_N_GENERATION]; //!< ancestors' delayed groups
-  int ifp_n_generation_ {0};                 //!< current number of generation stored
+  // Iterated Fission Probability
+  double lifetime_ {0.0};      //!< neutron lifetime [s]
+  vector<double> lifetimes_;   //!< ancestors' lifetimes [s]
+  vector<int> delayed_groups_; //!< ancestors' delayed groups
+  int ifp_n_generation_ {0};   //!< current number of generation stored
 
   // Other physical data
   Position r_last_current_; //!< coordinates of the last collision or
@@ -417,9 +451,11 @@ public:
   double& lifetime() { return lifetime_; }
   const double& lifetime() const { return lifetime_; }
   double& lifetimes(int i) { return lifetimes_[i]; }
-  double* lifetimes() { return lifetimes_; }
+  const double& lifetimes(int i) const { return lifetimes_[i]; }
+  const vector<double>& lifetimes() const { return lifetimes_; }
   int& delayed_groups(int i) { return delayed_groups_[i]; }
-  int* delayed_groups() { return delayed_groups_; }
+  const int& delayed_groups(int i) const { return delayed_groups_[i]; }
+  const vector<int>& delayed_groups() const { return delayed_groups_; }
   int& ifp_n_generation() { return ifp_n_generation_; }
   const int& ifp_n_generation() const { return ifp_n_generation_; }
 

@@ -30,6 +30,15 @@ void LocalCoord::reset()
   rotated = false;
 }
 
+SourceSite::SourceSite()
+{
+  // Resize lifetimes and delayed_groups if Iterated Fission Probability
+  if (settings::iterated_fission_probability) {
+    lifetimes_.resize(settings::ifp_n_generation);
+    delayed_groups_.resize(settings::ifp_n_generation);
+  }
+}
+
 ParticleData::ParticleData()
 {
   // Create and clear coordinate levels
@@ -57,6 +66,12 @@ ParticleData::ParticleData()
   // Creates the pulse-height storage for the particle
   if (!model::pulse_height_cells.empty()) {
     pht_storage_.resize(model::pulse_height_cells.size(), 0.0);
+  }
+
+  // Resize lifetimes and delayed_groups if Iterated Fission Probability
+  if (settings::iterated_fission_probability) {
+    lifetimes_.resize(settings::ifp_n_generation);
+    delayed_groups_.resize(settings::ifp_n_generation);
   }
 }
 
