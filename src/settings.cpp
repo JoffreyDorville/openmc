@@ -50,6 +50,7 @@ bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
 bool entropy_on {false};
 bool event_based {false};
+bool iterated_fission_probability {false};
 bool legendre_to_tabular {true};
 bool material_cell_offsets {true};
 bool output_summary {true};
@@ -100,6 +101,7 @@ int64_t max_particles_in_flight {100000};
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
+int ifp_n_generation {0};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -876,6 +878,23 @@ void read_settings_xml(pugi::xml_node root)
     auto range = get_node_array<double>(root, "temperature_range");
     temperature_range[0] = range.at(0);
     temperature_range[1] = range.at(1);
+  }
+
+  // Check for Iterated Fission Probability (IFP)
+  if (check_for_node(root, "iterated_fission_probability")) {
+    iterated_fission_probability = true;
+    // Get iterated_fission_probability write node
+    xml_node node_ifp = root.child("iterated_fission_probability");
+
+    // Determine number of generation for IFP
+    if (check_for_node(node_ifp, "n_generation")) {
+      ifp_n_generation = std::stoi(get_node_value(node_ifp, "n_generation"));
+    }
+    if (ifp_n_generation <= 0) {
+      fatal_error(
+        "The 'n_generation' subelement/attribute of the "
+        "<iterated_fission_probability> element must contain a value greater than 0");
+    }
   }
 
   // Check for tabular_legendre options
