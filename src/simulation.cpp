@@ -315,6 +315,12 @@ void allocate_banks()
 
     // Allocate fission bank
     init_fission_bank(3 * simulation::work_per_rank);
+
+    // Allocate IFP bank
+    if (settings::iterated_fission_probability) {
+      simulation::ifpdata_source_bank.resize(simulation::work_per_rank);
+      simulation::ifpdata_fission_bank.reserve(3 * simulation::work_per_rank);
+    }
   }
 
   if (settings::surf_source_write) {

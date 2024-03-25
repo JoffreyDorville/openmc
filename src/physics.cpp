@@ -251,6 +251,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         // Break out of loop as no more sites can be added to fission bank
         break;
       }
+      // TODO: add IFP data to ifpfissionbank
     } else {
       p.secondary_bank().push_back(site);
     }

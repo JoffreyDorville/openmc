@@ -43,29 +43,7 @@ enum class ParticleType { neutron, photon, electron, positron };
 //! NOTE: This structure is also used on the python side, and is defined
 //! in lib/core.py. Changes made to the type here must also be made to the
 //! python defintion.
-//struct SourceSite {
-//  Position r;
-//  Direction u;
-//  double E;
-//  double time {0.0};
-//  double wgt {1.0};
-//  int delayed_group {0};
-//  int surf_id {0};
-//  ParticleType particle;
-//  int64_t parent_id;
-//  int64_t progeny_id;
-//  double lifetimes[IFP_MAX_N_GENERATION];
-//  int delayed_groups[IFP_MAX_N_GENERATION];
-//  int ifp_n_generation {0};
-//};
-
 struct SourceSite {
-  //==========================================================================
-  // Constructors
-  SourceSite();
-
-  //==========================================================================
-  // Data members
   Position r;
   Direction u;
   double E;
@@ -76,21 +54,31 @@ struct SourceSite {
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
+};
+
+//! Iterated Fission Probability set
+struct IFPSet {
+  double lifetime;
+  int delayed_group;
+};
+
+//! Iterated Fission Probability data
+struct IFPData {
+  //==========================================================================
+  // Data members
   int ifp_n_generation {0};
 
   //==========================================================================
   // Accessor methods
+  double& lifetimes(int i) { return ifpset_[i].lifetime; }
+  const double& lifetimes(int i) const { return ifpset_[i].lifetime; }
+  int& delayed_groups(int i) { return ifpset_[i].delayed_group; }
+  const int& delayed_groups(int i) const { return ifpset_[i].delayed_group; }
 
-  double& lifetimes(int i) { return lifetimes_[i]; }
-  const double& lifetimes(int i) const { return lifetimes_[i]; }
-  int& delayed_groups(int i) { return delayed_groups_[i]; }
-  const int& delayed_groups(int i) const { return delayed_groups_[i]; }
-
-  private:
-    //==========================================================================
-    // Data members
-    vector<double> lifetimes_;
-    vector<int> delayed_groups_;
+  //==========================================================================
+  // Data members that cannot be protected without compiler warning from HDF5
+  // but should be considered protected
+  vector<IFPSet> ifpset_;
 };
 
 //! State of a particle used for particle track files

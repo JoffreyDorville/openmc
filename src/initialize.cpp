@@ -52,9 +52,6 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   } else {
     comm = MPI_COMM_WORLD;
   }
-
-  // Initialize MPI for C++
-  initialize_mpi(comm);
 #endif
 
   // Parse command-line arguments
@@ -121,6 +118,11 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (!read_model_xml())
     read_separate_xml_files();
 
+#ifdef OPENMC_MPI
+  // Initialize MPI for C++
+  initialize_mpi(comm);
+#endif
+
   // Reset locale to previous state
   if (std::setlocale(LC_ALL, prev_locale.c_str()) == NULL) {
     fatal_error("Cannot reset locale.");
@@ -160,7 +162,7 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   SourceSite b;
-  MPI_Aint disp[13];
+  MPI_Aint disp[10];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);
@@ -171,18 +173,35 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.particle, &disp[7]);
   MPI_Get_address(&b.parent_id, &disp[8]);
   MPI_Get_address(&b.progeny_id, &disp[9]);
-  MPI_Get_address(&b.lifetimes, &disp[10]);
-  MPI_Get_address(&b.delayed_groups, &disp[11]);
-  MPI_Get_address(&b.ifp_n_generation, &disp[12]);
-  for (int i = 12; i >= 0; --i) {
+  for (int i = 9; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
-  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, IFP_MAX_N_GENERATION, IFP_MAX_N_GENERATION, 1};
+  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG, MPI_DOUBLE, MPI_INT, MPI_INT};
-  MPI_Type_create_struct(13, blocks, disp, types, &mpi::source_site);
+    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
+  MPI_Type_create_struct(10, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
+
+  // Create structure for IFP data
+  if (settings::iterated_fission_probability) {
+    Test test;
+
+    const int nitems_1 = 2;
+    int blocklengths_1[2] = {1, 1};
+    MPI_Datatype types_1[2] = {MPI_INT, MPI_DOUBLE};
+    MPI_Datatype mpi_type_test_data;
+    MPI_Aint offsets_1[2];
+
+    MPI_Get_address(&test.info1, &offsets_1[0]);
+    MPI_Get_address(&test.info2, &offsets_1[1]);
+    for (int i = 1; i >= 0; --i) {
+      offsets_1[i] -= offsets_1[0];
+    }
+
+    MPI_Type_create_struct(nitems_1, blocklengths_1, offsets_1, types_1, &mpi_type_test_data);
+    MPI_Type_commit(&mpi_type_test_data);
+  }
 }
 #endif // OPENMC_MPI
 

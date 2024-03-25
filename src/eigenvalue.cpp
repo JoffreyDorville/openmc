@@ -176,6 +176,8 @@ void synchronize_bank()
   MPI_Exscan(&index_temp, &start, 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
   finish = start + index_temp;
 
+  //TODO: protect for MPI_Exscan at rank 0
+
   // Allocate space for bank_position if this hasn't been done yet
   int64_t bank_position[mpi::n_procs];
   MPI_Allgather(
@@ -199,6 +201,7 @@ void synchronize_bank()
       // If we have too few sites, repeat sites from the very end of the
       // fission bank
       sites_needed = settings::n_particles - finish;
+      // TODO: sites_needed > simulation::fission_bank.size() or other test to make sure we don't need info from other proc
       for (int i = 0; i < sites_needed; ++i) {
         int i_bank = simulation::fission_bank.size() - sites_needed + i;
         temp_sites[index_temp] = simulation::fission_bank[i_bank];
