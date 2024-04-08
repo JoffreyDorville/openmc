@@ -318,8 +318,8 @@ void allocate_banks()
 
     // Allocate IFP bank
     if (settings::iterated_fission_probability) {
-      simulation::ifpdata_source_bank.resize(simulation::work_per_rank);
-      simulation::ifpdata_fission_bank.reserve(3 * simulation::work_per_rank);
+      simulation::ifp_source_bank.resize(simulation::work_per_rank);
+      simulation::ifp_fission_bank.reserve(3 * simulation::work_per_rank);
     }
   }
 
@@ -466,6 +466,9 @@ void initialize_generation()
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // Clear out the fission bank
     simulation::fission_bank.resize(0);
+    if (settings::iterated_fission_probability) {
+      simulation::ifp_fission_bank.resize(0);
+    }
 
     // Count source sites if using uniform fission source weighting
     if (settings::ufs_on)

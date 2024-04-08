@@ -88,6 +88,26 @@ public:
     return idx;
   }
 
+  int64_t thread_safe_insert(int64_t idx, const T& value)
+  {
+    // Atomically increase the size
+    int64_t i;
+#pragma omp atomic capture seq_cst
+    i = size_++;
+
+    // Check that we haven't written off the end of the array
+    if (idx >= capacity_) {
+#pragma omp atomic write seq_cst
+      size_ = capacity_;
+      return -1;
+    }
+
+    // Copy element value to the array
+    data_[idx] = value;
+
+    return idx;
+  }
+
   //! Free any space that was allocated for the container. Set the
   //! container's size and capacity to 0.
   void clear()

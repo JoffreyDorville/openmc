@@ -141,10 +141,17 @@ void synchronize_bank()
   // Allocate temporary source bank -- we don't really know how many fission
   // sites were created, so overallocate by a factor of 3
   int64_t index_temp = 0;
-  vector<SourceSite> temp_sites(3 * simulation::work_per_rank);
+  
+  vector<SourceSite> temp_sites;
+  temp_sites.resize(3 * simulation::work_per_rank);
+  vector<IFPData> temp_ifp;
+  if (settings::iterated_fission_probability) {
+    temp_ifp.resize(3 * simulation::work_per_rank);
+  }
 
   for (int64_t i = 0; i < simulation::fission_bank.size(); i++) {
     const auto& site = simulation::fission_bank[i];
+    const auto& ifpdata = simulation::ifp_fission_bank[i];
 
     // If there are less than n_particles particles banked, automatically add
     // int(n_particles/total) sites to temp_sites. For example, if you need
@@ -153,6 +160,9 @@ void synchronize_bank()
     if (total < settings::n_particles) {
       for (int64_t j = 1; j <= settings::n_particles / total; ++j) {
         temp_sites[index_temp] = site;
+        if (settings::iterated_fission_probability) {
+          temp_ifp[index_temp] = ifpdata;
+        }
         ++index_temp;
       }
     }
@@ -160,6 +170,9 @@ void synchronize_bank()
     // Randomly sample sites needed
     if (prn(&seed) < p_sample) {
       temp_sites[index_temp] = site;
+      if (settings::iterated_fission_probability) {
+        temp_ifp[index_temp] = ifpdata;
+      }
       ++index_temp;
     }
   }
@@ -205,6 +218,9 @@ void synchronize_bank()
       for (int i = 0; i < sites_needed; ++i) {
         int i_bank = simulation::fission_bank.size() - sites_needed + i;
         temp_sites[index_temp] = simulation::fission_bank[i_bank];
+        if (settings::iterated_fission_probability) {
+          temp_ifp[index_temp] = simulation::ifp_fission_bank[i_bank];
+        }
         ++index_temp;
       }
     }
@@ -317,7 +333,13 @@ void synchronize_bank()
 #else
   std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles,
     simulation::source_bank.begin());
+  if (settings::iterated_fission_probability) {
+    std::copy(temp_ifp.data(), temp_ifp.data() + settings::n_particles,
+      simulation::ifp_source_bank.begin());
+  }
 #endif
+  temp_sites.clear();
+  temp_ifp.clear();
 
   simulation::time_bank_sendrecv.stop();
   simulation::time_bank.stop();

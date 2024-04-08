@@ -30,13 +30,9 @@ void LocalCoord::reset()
   rotated = false;
 }
 
-SourceSite::SourceSite()
+IFPData::IFPData()
 {
-  // Resize lifetimes and delayed_groups if Iterated Fission Probability
-  if (settings::iterated_fission_probability) {
-    lifetimes_.resize(settings::ifp_n_generation);
-    delayed_groups_.resize(settings::ifp_n_generation);
-  }
+  ifpset_.resize(settings::ifp_n_generation);
 }
 
 ParticleData::ParticleData()

@@ -127,13 +127,6 @@ void Particle::from_source(const SourceSite* src)
   E_last() = E();
   time() = src->time;
   time_last() = src->time;
-  if (settings::iterated_fission_probability) {
-    for (int i = 0; i < src->ifp_n_generation; i++) {
-      lifetimes(i) = src->lifetimes(i);
-      delayed_groups(i) = src->delayed_groups(i);
-    }
-    ifp_n_generation() = src->ifp_n_generation;
-  }
 }
 
 void Particle::event_calculate_xs()

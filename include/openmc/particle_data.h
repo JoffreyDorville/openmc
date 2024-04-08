@@ -64,21 +64,26 @@ struct IFPSet {
 
 //! Iterated Fission Probability data
 struct IFPData {
-  //==========================================================================
-  // Data members
-  int ifp_n_generation {0};
+
+  IFPData();
 
   //==========================================================================
-  // Accessor methods
-  double& lifetimes(int i) { return ifpset_[i].lifetime; }
-  const double& lifetimes(int i) const { return ifpset_[i].lifetime; }
-  int& delayed_groups(int i) { return ifpset_[i].delayed_group; }
-  const int& delayed_groups(int i) const { return ifpset_[i].delayed_group; }
+  // Data members
+  int n_generation_ {0};
 
   //==========================================================================
   // Data members that cannot be protected without compiler warning from HDF5
   // but should be considered protected
   vector<IFPSet> ifpset_;
+
+  //==========================================================================
+  // Accessor methods
+  int& n_generation() { return n_generation_; }
+  const int& n_generation() const { return n_generation_; }
+  double& lifetimes(int i) { return ifpset_[i].lifetime; }
+  const double& lifetimes(int i) const { return ifpset_[i].lifetime; }
+  int& delayed_groups(int i) { return ifpset_[i].delayed_group; }
+  const int& delayed_groups(int i) const { return ifpset_[i].delayed_group; }
 };
 
 //! State of a particle used for particle track files

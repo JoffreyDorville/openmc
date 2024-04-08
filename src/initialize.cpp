@@ -184,24 +184,24 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Type_commit(&mpi::source_site);
 
   // Create structure for IFP data
-  if (settings::iterated_fission_probability) {
-    Test test;
-
-    const int nitems_1 = 2;
-    int blocklengths_1[2] = {1, 1};
-    MPI_Datatype types_1[2] = {MPI_INT, MPI_DOUBLE};
-    MPI_Datatype mpi_type_test_data;
-    MPI_Aint offsets_1[2];
-
-    MPI_Get_address(&test.info1, &offsets_1[0]);
-    MPI_Get_address(&test.info2, &offsets_1[1]);
-    for (int i = 1; i >= 0; --i) {
-      offsets_1[i] -= offsets_1[0];
-    }
-
-    MPI_Type_create_struct(nitems_1, blocklengths_1, offsets_1, types_1, &mpi_type_test_data);
-    MPI_Type_commit(&mpi_type_test_data);
-  }
+  //if (settings::iterated_fission_probability) {
+  //  Test test;
+  //
+  //  const int nitems_1 = 2;
+  //  int blocklengths_1[2] = {1, 1};
+  //  MPI_Datatype types_1[2] = {MPI_INT, MPI_DOUBLE};
+  //  MPI_Datatype mpi_type_test_data;
+  //  MPI_Aint offsets_1[2];
+  //
+  //  MPI_Get_address(&test.info1, &offsets_1[0]);
+  //  MPI_Get_address(&test.info2, &offsets_1[1]);
+  //  for (int i = 1; i >= 0; --i) {
+  //    offsets_1[i] -= offsets_1[0];
+  //  }
+  //
+  //  MPI_Type_create_struct(nitems_1, blocklengths_1, offsets_1, types_1, &mpi_type_test_data);
+  //  MPI_Type_commit(&mpi_type_test_data);
+  //}
 }
 #endif // OPENMC_MPI
 

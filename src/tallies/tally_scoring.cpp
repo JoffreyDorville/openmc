@@ -892,19 +892,23 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 
     case SCORE_IFP_TIME_NUM:
       if (settings::iterated_fission_probability) {
-        if ((p.type() == Type::neutron) && (p.fission()) &&
-            (p.ifp_n_generation() == settings::ifp_n_generation)) {
-          score = p.lifetimes(0) * p.wgt_last();
+        if ((p.type() == Type::neutron) && (p.fission())) {
+          IFPData ifpdata = simulation::ifp_source_bank[p.current_work()-1];
+          if (ifpdata.n_generation() == settings::ifp_n_generation) {
+            score = ifpdata.lifetimes(0) * p.wgt_last();
+          }
         }
       }
       break;
 
     case SCORE_IFP_BETA_NUM:
       if (settings::iterated_fission_probability) {
-        if ((p.type() == Type::neutron) && (p.fission()) &&
-            (p.ifp_n_generation() == settings::ifp_n_generation)) {
-          if (p.delayed_groups(0) > 0) {
-            score = p.wgt_last();
+        if ((p.type() == Type::neutron) && (p.fission())) {
+          IFPData ifpdata = simulation::ifp_source_bank[p.current_work()-1];
+          if (ifpdata.n_generation() == settings::ifp_n_generation) {
+            if (ifpdata.delayed_groups(0) > 0) {
+              score = p.wgt_last();
+            }
           }
         }
       }
@@ -912,9 +916,11 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 
     case SCORE_IFP_DENOM:
       if (settings::iterated_fission_probability) {
-        if ((p.type() == Type::neutron) && (p.fission()) &&
-            (p.ifp_n_generation() == settings::ifp_n_generation)) {
-          score = p.wgt_last();
+        if ((p.type() == Type::neutron) && (p.fission())) {
+          IFPData ifpdata = simulation::ifp_source_bank[p.current_work()-1];
+          if (ifpdata.n_generation() == settings::ifp_n_generation) {
+            score = p.wgt_last();
+          }
         }
       }
       break;

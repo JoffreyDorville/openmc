@@ -26,6 +26,10 @@ SharedArray<SourceSite> surf_source_bank;
 // function.
 SharedArray<SourceSite> fission_bank;
 
+vector<IFPData> ifp_source_bank;
+
+SharedArray<IFPData> ifp_fission_bank;
+
 // Each entry in this vector corresponds to the number of progeny produced
 // this generation for the particle located at that index. This vector is
 // used to efficiently sort the fission bank after each iteration.
@@ -82,6 +86,8 @@ void sort_fission_bank()
   // over provisioned, so we can use that as scratch space.
   SourceSite* sorted_bank;
   vector<SourceSite> sorted_bank_holder;
+  IFPData* sorted_ifp_bank;
+  vector<IFPData> sorted_ifp_bank_holder;
 
   // If there is not enough space, allocate a temporary vector and point to it
   if (simulation::fission_bank.size() >
@@ -90,6 +96,11 @@ void sort_fission_bank()
     sorted_bank = sorted_bank_holder.data();
   } else { // otherwise, point sorted_bank to unused portion of the fission bank
     sorted_bank = &simulation::fission_bank[simulation::fission_bank.size()];
+  }
+
+  if (settings::iterated_fission_probability) {
+    sorted_ifp_bank_holder.resize(simulation::fission_bank.size());
+    sorted_ifp_bank = sorted_ifp_bank_holder.data();
   }
 
   // Use parent and progeny indices to sort fission bank
@@ -102,11 +113,19 @@ void sort_fission_bank()
                   "shared fission bank size.");
     }
     sorted_bank[idx] = site;
+    if (settings::iterated_fission_probability) {
+      const auto& ifpdata = simulation::ifp_fission_bank[i];
+      sorted_ifp_bank[idx] = ifpdata;
+    }
   }
 
   // Copy sorted bank into the fission bank
   std::copy(sorted_bank, sorted_bank + simulation::fission_bank.size(),
     simulation::fission_bank.data());
+  if (settings::iterated_fission_probability) {
+    std::copy(sorted_ifp_bank, sorted_ifp_bank + simulation::fission_bank.size(),
+    simulation::ifp_fission_bank.data());
+  }
 }
 
 //==============================================================================
