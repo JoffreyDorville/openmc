@@ -151,8 +151,14 @@ int openmc_finalize()
 
   // Free all MPI types
 #ifdef OPENMC_MPI
-  if (mpi::source_site != MPI_DATATYPE_NULL)
+  if (mpi::source_site != MPI_DATATYPE_NULL) {
     MPI_Type_free(&mpi::source_site);
+  }
+  if (settings::iterated_fission_probability) {
+    if (mpi::mpi_type_ifpset != MPI_DATATYPE_NULL) {
+      MPI_Type_free(&mpi::mpi_type_ifpset);
+    }
+  }
 #endif
 
   return 0;

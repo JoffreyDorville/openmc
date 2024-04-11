@@ -27,6 +27,8 @@
 #include <limits>    //for infinity
 #include <string>
 
+#include <unistd.h>  // TODO: remove after debugging
+
 namespace openmc {
 
 //==============================================================================
@@ -151,7 +153,7 @@ void synchronize_bank()
 
   for (int64_t i = 0; i < simulation::fission_bank.size(); i++) {
     const auto& site = simulation::fission_bank[i];
-    const auto& ifpdata = simulation::ifp_fission_bank[i];
+    const auto& ifpdata = simulation::ifp_fission_bank[i]; // TODO: manage if no ifp_fission_bank entry
 
     // If there are less than n_particles particles banked, automatically add
     // int(n_particles/total) sites to temp_sites. For example, if you need
@@ -232,6 +234,12 @@ void synchronize_bank()
   simulation::time_bank_sample.stop();
   simulation::time_bank_sendrecv.start();
 
+  //{
+  //  int i=0;
+  //  while (0 == i)
+  //    sleep(5);
+  //}
+
 #ifdef OPENMC_MPI
   // ==========================================================================
   // SEND BANK SITES TO NEIGHBORS
@@ -239,11 +247,20 @@ void synchronize_bank()
   int64_t index_local = 0;
   vector<MPI_Request> requests;
 
+  vector<IFPSet> send_ifpset;
+  vector<int> send_generation;
+
   if (start < settings::n_particles) {
     // Determine the index of the processor which has the first part of the
     // source_bank for the local processor
     int neighbor = upper_bound_index(
       simulation::work_index.begin(), simulation::work_index.end(), start);
+
+    // Resize IFP send buffers
+    if (settings::iterated_fission_probability) { // Maybe resize only if more than 1 proc?
+      send_ifpset.resize(settings::ifp_n_generation * 3 * simulation::work_per_rank);
+      send_generation.resize(3 * simulation::work_per_rank);
+    }
 
     while (start < finish) {
       // Determine the number of sites to send
@@ -257,6 +274,32 @@ void synchronize_bank()
         MPI_Isend(&temp_sites[index_local], static_cast<int>(n),
           mpi::source_site, neighbor, mpi::rank, mpi::intracomm,
           &requests.back());
+
+        if (settings::iterated_fission_probability) {
+
+          // Serialize IFPSet data
+          for (int i = index_local; i < index_local + n; i++) { // TODO: check
+            for (int j = 0; j < settings::ifp_n_generation; j++) {
+              send_ifpset[i*settings::ifp_n_generation+j] = temp_ifp[i].ifpset_[j];
+            }
+          }
+
+          // Serialize number of generation
+          for (int i = index_local; i < index_local + n; i++) {
+            send_generation[i] = temp_ifp[i].n_generation();
+          }
+
+          // Send vector values
+          requests.emplace_back();
+          MPI_Isend(&send_ifpset[settings::ifp_n_generation*index_local], settings::ifp_n_generation*static_cast<int>(n),
+            mpi::mpi_type_ifpset, neighbor, mpi::rank, mpi::intracomm, &requests.back());
+
+          // Send number of generation - TODO: at synchronization we can use only one value
+          requests.emplace_back();
+          MPI_Isend(&send_generation[index_local], static_cast<int>(n),
+            MPI_INT, neighbor, mpi::rank, mpi::intracomm, &requests.back());
+
+        }
       }
 
       // Increment all indices
@@ -278,6 +321,9 @@ void synchronize_bank()
   start = simulation::work_index[mpi::rank];
   index_local = 0;
 
+  vector<IFPSet> recv_ifpset;
+  vector<int> recv_generation;
+
   // Determine what process has the source sites that will need to be stored at
   // the beginning of this processor's source bank.
 
@@ -287,6 +333,12 @@ void synchronize_bank()
   } else {
     neighbor =
       upper_bound_index(bank_position, bank_position + mpi::n_procs, start);
+  }
+
+  // Resize IFP receive buffers
+  if (settings::iterated_fission_probability) {
+    recv_ifpset.resize(settings::ifp_n_generation*simulation::work_per_rank);
+    recv_generation.resize(simulation::work_per_rank);
   }
 
   while (start < simulation::work_index[mpi::rank + 1]) {
@@ -308,13 +360,31 @@ void synchronize_bank()
       MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n),
         mpi::source_site, neighbor, neighbor, mpi::intracomm, &requests.back());
 
+      if (settings::iterated_fission_probability) {
+
+        // Receive IFPSet data
+        requests.emplace_back();
+        MPI_Irecv(&recv_ifpset[settings::ifp_n_generation*index_local], settings::ifp_n_generation*static_cast<int>(n),
+          mpi::mpi_type_ifpset, neighbor, neighbor, mpi::intracomm, &requests.back());
+
+        // Receive number of generation
+        requests.emplace_back();
+        MPI_Irecv(&recv_generation[index_local], static_cast<int>(n),
+          MPI_INT, neighbor, neighbor, mpi::intracomm, &requests.back());
+      }
+
     } else {
-      // If the source sites are on this procesor, we can simply copy them
+      // If the source sites are on this processor, we can simply copy them
       // from the temp_sites bank
 
       index_temp = start - bank_position[mpi::rank];
       std::copy(&temp_sites[index_temp], &temp_sites[index_temp + n],
         &simulation::source_bank[index_local]);
+
+      if (settings::iterated_fission_probability) {
+        std::copy(&temp_ifp[index_temp], &temp_ifp[index_temp + n],
+          &simulation::ifp_source_bank[index_local]);
+      }
     }
 
     // Increment all indices
@@ -329,6 +399,51 @@ void synchronize_bank()
 
   int n_request = requests.size();
   MPI_Waitall(n_request, requests.data(), MPI_STATUSES_IGNORE);
+
+  if (settings::iterated_fission_probability) {
+
+    // Pass the information to ifp_source_bank
+    start = simulation::work_index[mpi::rank];
+    index_local = 0;
+
+    int neighbor;
+    if (start >= bank_position[mpi::n_procs - 1]) {
+      neighbor = mpi::n_procs - 1;
+    } else {
+      neighbor =
+        upper_bound_index(bank_position, bank_position + mpi::n_procs, start);
+    }
+
+    while (start < simulation::work_index[mpi::rank + 1]) {
+      // Determine how many sites need to be received
+      int64_t n;
+      if (neighbor == mpi::n_procs - 1) {
+        n = simulation::work_index[mpi::rank + 1] - start;
+      } else {
+        n = std::min(bank_position[neighbor + 1],
+              simulation::work_index[mpi::rank + 1]) -
+            start;
+      }
+
+      if (neighbor != mpi::rank) {
+
+        for (int i = index_local; i < index_local + n; i++) { // TODO: check that recv_ifpdata is correctly constructed
+          IFPData recv_ifpdata(recv_ifpset.begin() + settings::ifp_n_generation*i, recv_ifpset.begin() + settings::ifp_n_generation*(i+1), recv_generation[i]);
+          simulation::ifp_source_bank[i] = recv_ifpdata;
+        }
+      }
+      // Increment all indices
+      start += n;
+      index_local += n;
+      ++neighbor;
+    }
+
+    // Clear IFP buffers
+    send_ifpset.clear();
+    send_generation.clear();
+    recv_ifpset.clear();
+    recv_generation.clear();
+  }
 
 #else
   std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles,

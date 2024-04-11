@@ -66,6 +66,7 @@ struct IFPSet {
 struct IFPData {
 
   IFPData();
+  IFPData(std::vector<IFPSet>::const_iterator first, std::vector<IFPSet>::const_iterator last, int n_gen);
 
   //==========================================================================
   // Data members

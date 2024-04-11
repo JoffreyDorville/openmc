@@ -35,6 +35,12 @@ IFPData::IFPData()
   ifpset_.resize(settings::ifp_n_generation);
 }
 
+IFPData::IFPData(std::vector<IFPSet>::const_iterator first, std::vector<IFPSet>::const_iterator last, int n_gen) {
+  std::vector<IFPSet> ifpset(first, last);
+  ifpset_ = ifpset;
+  n_generation() = n_gen;
+}
+
 ParticleData::ParticleData()
 {
   // Create and clear coordinate levels

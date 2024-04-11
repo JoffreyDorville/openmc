@@ -52,6 +52,9 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   } else {
     comm = MPI_COMM_WORLD;
   }
+
+  // Initialize MPI for C++
+  initialize_mpi(comm);
 #endif
 
   // Parse command-line arguments
@@ -118,11 +121,6 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (!read_model_xml())
     read_separate_xml_files();
 
-#ifdef OPENMC_MPI
-  // Initialize MPI for C++
-  initialize_mpi(comm);
-#endif
-
   // Reset locale to previous state
   if (std::setlocale(LC_ALL, prev_locale.c_str()) == NULL) {
     fatal_error("Cannot reset locale.");
@@ -183,24 +181,22 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Type_create_struct(10, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 
-  // Create structure for IFP data
+  // Create structure for IFP data set
   //if (settings::iterated_fission_probability) {
-  //  Test test;
-  //
-  //  const int nitems_1 = 2;
-  //  int blocklengths_1[2] = {1, 1};
-  //  MPI_Datatype types_1[2] = {MPI_INT, MPI_DOUBLE};
-  //  MPI_Datatype mpi_type_test_data;
-  //  MPI_Aint offsets_1[2];
-  //
-  //  MPI_Get_address(&test.info1, &offsets_1[0]);
-  //  MPI_Get_address(&test.info2, &offsets_1[1]);
-  //  for (int i = 1; i >= 0; --i) {
-  //    offsets_1[i] -= offsets_1[0];
-  //  }
-  //
-  //  MPI_Type_create_struct(nitems_1, blocklengths_1, offsets_1, types_1, &mpi_type_test_data);
-  //  MPI_Type_commit(&mpi_type_test_data);
+    IFPSet ifpset;
+  
+    int blocklengths[2] = {1, 1};
+    MPI_Datatype types_ifp[2] = {MPI_DOUBLE, MPI_INT};
+    MPI_Aint offsets[2];
+  
+    MPI_Get_address(&ifpset.lifetime, &offsets[0]);
+    MPI_Get_address(&ifpset.delayed_group, &offsets[1]);
+    for (int i = 1; i >= 0; --i) {
+      offsets[i] -= offsets[0];
+    }
+  
+    MPI_Type_create_struct(2, blocklengths, offsets, types_ifp, &mpi::mpi_type_ifpset);
+    MPI_Type_commit(&mpi::mpi_type_ifpset);
   //}
 }
 #endif // OPENMC_MPI

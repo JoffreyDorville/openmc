@@ -215,7 +215,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     IFPData updated_ifpdata;
     if (settings::iterated_fission_probability) {
 
-      auto ifpdata = simulation::ifp_source_bank[p.current_work()-1];
+      const auto& ifpdata = simulation::ifp_source_bank[p.current_work()-1];
 
       int idx = ifpdata.n_generation();
 
