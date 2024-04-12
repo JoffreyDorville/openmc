@@ -343,10 +343,6 @@ enum class RunMode {
   VOLUME
 };
 
-// Maximum number of generation for IFP
-// If this value is changed here, it needs to be updated in core/lib.py as well.
-constexpr int IFP_MAX_N_GENERATION {15};
-
 //==============================================================================
 // Geometry Constants
 
