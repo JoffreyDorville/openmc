@@ -154,10 +154,8 @@ int openmc_finalize()
   if (mpi::source_site != MPI_DATATYPE_NULL) {
     MPI_Type_free(&mpi::source_site);
   }
-  if (settings::iterated_fission_probability) {
-    if (mpi::mpi_type_ifpset != MPI_DATATYPE_NULL) {
-      MPI_Type_free(&mpi::mpi_type_ifpset);
-    }
+  if (mpi::mpi_type_ifpset != MPI_DATATYPE_NULL) {
+    MPI_Type_free(&mpi::mpi_type_ifpset);
   }
 #endif
 

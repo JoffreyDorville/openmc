@@ -182,7 +182,7 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Type_commit(&mpi::source_site);
 
   // Create structure for IFP data set
-  //if (settings::iterated_fission_probability) {
+  if (settings::iterated_fission_probability) {
     IFPSet ifpset;
   
     int blocklengths[2] = {1, 1};
@@ -197,7 +197,7 @@ void initialize_mpi(MPI_Comm intracomm)
   
     MPI_Type_create_struct(2, blocklengths, offsets, types_ifp, &mpi::mpi_type_ifpset);
     MPI_Type_commit(&mpi::mpi_type_ifpset);
-  //}
+  }
 }
 #endif // OPENMC_MPI
 
