@@ -18,7 +18,7 @@ extern bool master;
 
 #ifdef OPENMC_MPI
 extern MPI_Datatype source_site;
-extern MPI_Datatype mpi_type_ifpset;
+extern MPI_Datatype ifp_entry;
 extern MPI_Comm intracomm;
 #endif
 

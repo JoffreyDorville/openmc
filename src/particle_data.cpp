@@ -30,14 +30,14 @@ void LocalCoord::reset()
   rotated = false;
 }
 
-IFPData::IFPData()
+IFPLog::IFPLog()
 {
-  ifpset_.resize(settings::ifp_n_generation);
+  ifpdata_.resize(settings::ifp_n_generation);
 }
 
-IFPData::IFPData(std::vector<IFPSet>::const_iterator first, std::vector<IFPSet>::const_iterator last, int n_gen) {
-  std::vector<IFPSet> ifpset(first, last);
-  ifpset_ = ifpset;
+IFPLog::IFPLog(std::vector<IFPEntry>::const_iterator first, std::vector<IFPEntry>::const_iterator last, int n_gen) {
+  std::vector<IFPEntry> ifpdata(first, last);
+  ifpdata_ = ifpdata;
   n_generation() = n_gen;
 }
 
@@ -70,11 +70,6 @@ ParticleData::ParticleData()
     pht_storage_.resize(model::pulse_height_cells.size(), 0.0);
   }
 
-  // Resize lifetimes and delayed_groups if Iterated Fission Probability
-  if (settings::iterated_fission_probability) {
-    lifetimes_.resize(settings::ifp_n_generation);
-    delayed_groups_.resize(settings::ifp_n_generation);
-  }
 }
 
 TrackState ParticleData::get_track_state() const

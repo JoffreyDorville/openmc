@@ -143,21 +143,21 @@ void synchronize_bank()
   int64_t index_temp = 0;
   
   vector<SourceSite> temp_sites(3 * simulation::work_per_rank);
-  vector<IFPData> temp_ifp;
+  vector<IFPLog> temp_ifplogs;
   if (settings::iterated_fission_probability) {
-    temp_ifp.resize(3 * simulation::work_per_rank);
+    temp_ifplogs.resize(3 * simulation::work_per_rank);
   }
 
   for (int64_t i = 0; i < simulation::fission_bank.size(); i++) {
     const auto& site = simulation::fission_bank[i];
 
-    // Declare pointer to constant IFPData that will be initialized if
+    // Declare pointer to constant IFPLog that will be initialized if
     // ifp is requested by the user.
-    const IFPData* ifpdata_ptr;
+    const IFPLog* ifplog_ptr;
 
-    // Initialize the ifpdata pointer
+    // Initialize the ifplog pointer
     if (settings::iterated_fission_probability) {
-      ifpdata_ptr = &simulation::ifp_fission_bank[i];
+      ifplog_ptr = &simulation::ifp_fission_bank[i];
     }
 
     // If there are less than n_particles particles banked, automatically add
@@ -168,7 +168,7 @@ void synchronize_bank()
       for (int64_t j = 1; j <= settings::n_particles / total; ++j) {
         temp_sites[index_temp] = site;
         if (settings::iterated_fission_probability) {
-          temp_ifp[index_temp] = *ifpdata_ptr;
+          temp_ifplogs[index_temp] = *ifplog_ptr;
         }
         ++index_temp;
       }
@@ -178,7 +178,7 @@ void synchronize_bank()
     if (prn(&seed) < p_sample) {
       temp_sites[index_temp] = site;
       if (settings::iterated_fission_probability) {
-        temp_ifp[index_temp] = *ifpdata_ptr;
+        temp_ifplogs[index_temp] = *ifplog_ptr;
       }
       ++index_temp;
     }
@@ -226,7 +226,7 @@ void synchronize_bank()
         int i_bank = simulation::fission_bank.size() - sites_needed + i;
         temp_sites[index_temp] = simulation::fission_bank[i_bank];
         if (settings::iterated_fission_probability) {
-          temp_ifp[index_temp] = simulation::ifp_fission_bank[i_bank];
+          temp_ifplogs[index_temp] = simulation::ifp_fission_bank[i_bank];
         }
         ++index_temp;
       }
@@ -246,7 +246,7 @@ void synchronize_bank()
   int64_t index_local = 0;
   vector<MPI_Request> requests;
 
-  vector<IFPSet> send_ifpset;
+  vector<IFPEntry> send_ifpdata;
   vector<int> send_generation;
 
   if (start < settings::n_particles) {
@@ -257,7 +257,7 @@ void synchronize_bank()
 
     // Resize IFP send buffers
     if (settings::iterated_fission_probability && mpi::n_procs > 1) {
-      send_ifpset.resize(settings::ifp_n_generation * 3 * simulation::work_per_rank);
+      send_ifpdata.resize(settings::ifp_n_generation * 3 * simulation::work_per_rank);
       send_generation.resize(3 * simulation::work_per_rank);
     }
 
@@ -278,16 +278,16 @@ void synchronize_bank()
 
           // Retrieve the n_generation of the first element that will be sent.
           // We will later check that every element sent shares the same n_generation value
-          int n_generation_check = temp_ifp[index_local].n_generation();
+          int n_generation_check = temp_ifplogs[index_local].n_generation();
 
           for (int i = index_local; i < index_local + n; i++) {
 
-            // Serialize IFPSet data
-            std::copy(temp_ifp[i].ifpset_.begin(), temp_ifp[i].ifpset_.end(), send_ifpset.begin() + i*settings::ifp_n_generation);
+            // Serialize IFP data
+            std::copy(temp_ifplogs[i].ifpdata_.begin(), temp_ifplogs[i].ifpdata_.end(), send_ifpdata.begin() + i*settings::ifp_n_generation);
 
             // Check that all n_generation values to send are equal.
-            // That way we can send only one int value for all IFPData.
-            if (temp_ifp[i].n_generation() != n_generation_check) {
+            // That way we can send only one int value for all IFP logs.
+            if (temp_ifplogs[i].n_generation() != n_generation_check) {
               fatal_error("n_generation should be consistent over all elements during synchronization!");
             }
           }
@@ -295,15 +295,14 @@ void synchronize_bank()
           // Allocate n_generation to the sending buffer
           send_generation[index_local] = n_generation_check;
 
-          // Send serialized IFPSet data
+          // Send serialized IFP data
           requests.emplace_back();
-          MPI_Isend(&send_ifpset[settings::ifp_n_generation*index_local], settings::ifp_n_generation*static_cast<int>(n),
-            mpi::mpi_type_ifpset, neighbor, mpi::rank, mpi::intracomm, &requests.back());
+          MPI_Isend(&send_ifpdata[settings::ifp_n_generation*index_local], settings::ifp_n_generation*static_cast<int>(n),
+            mpi::ifp_entry, neighbor, mpi::rank, mpi::intracomm, &requests.back());
 
           // Send a single n_generation as it is shared among sent particles
           requests.emplace_back();
           MPI_Isend(&send_generation[index_local], 1, MPI_INT, neighbor, mpi::rank, mpi::intracomm, &requests.back());
-
         }
       }
 
@@ -326,7 +325,7 @@ void synchronize_bank()
   start = simulation::work_index[mpi::rank];
   index_local = 0;
 
-  vector<IFPSet> recv_ifpset;
+  vector<IFPEntry> recv_ifpdata;
   vector<int> recv_generation;
 
   // Determine what process has the source sites that will need to be stored at
@@ -342,7 +341,7 @@ void synchronize_bank()
 
   // Resize IFP receive buffers
   if (settings::iterated_fission_probability && mpi::n_procs > 1) {
-    recv_ifpset.resize(settings::ifp_n_generation*simulation::work_per_rank);
+    recv_ifpdata.resize(settings::ifp_n_generation*simulation::work_per_rank);
     recv_generation.resize(simulation::work_per_rank);
   }
 
@@ -367,10 +366,10 @@ void synchronize_bank()
 
       if (settings::iterated_fission_probability) {
 
-        // Receive IFPSet data
+        // Receive IFP data
         requests.emplace_back();
-        MPI_Irecv(&recv_ifpset[settings::ifp_n_generation*index_local], settings::ifp_n_generation*static_cast<int>(n),
-          mpi::mpi_type_ifpset, neighbor, neighbor, mpi::intracomm, &requests.back());
+        MPI_Irecv(&recv_ifpdata[settings::ifp_n_generation*index_local], settings::ifp_n_generation*static_cast<int>(n),
+          mpi::ifp_entry, neighbor, neighbor, mpi::intracomm, &requests.back());
 
         // Receive number of generation
         requests.emplace_back();
@@ -386,7 +385,7 @@ void synchronize_bank()
         &simulation::source_bank[index_local]);
 
       if (settings::iterated_fission_probability) {
-        std::copy(&temp_ifp[index_temp], &temp_ifp[index_temp + n],
+        std::copy(&temp_ifplogs[index_temp], &temp_ifplogs[index_temp + n],
           &simulation::ifp_source_bank[index_local]);
       }
     }
@@ -406,7 +405,7 @@ void synchronize_bank()
 
   if (settings::iterated_fission_probability) {
 
-    // Deserialize IFPData
+    // Deserialize IFPLog
     start = simulation::work_index[mpi::rank];
     index_local = 0;
 
@@ -431,10 +430,10 @@ void synchronize_bank()
 
       if (neighbor != mpi::rank) {
 
-        // Store deserialized IFPData in ifp_source_bank
-        for (int i = index_local; i < index_local + n; i++) { // TODO: check that recv_ifpdata is correctly constructed
-          IFPData recv_ifpdata(recv_ifpset.begin() + settings::ifp_n_generation*i, recv_ifpset.begin() + settings::ifp_n_generation*(i+1), recv_generation[index_local]);
-          simulation::ifp_source_bank[i] = recv_ifpdata;
+        // Store deserialized IFPLog in ifp_source_bank
+        for (int i = index_local; i < index_local + n; i++) {
+          IFPLog recv_ifplog(recv_ifpdata.begin() + settings::ifp_n_generation*i, recv_ifpdata.begin() + settings::ifp_n_generation*(i+1), recv_generation[index_local]);
+          simulation::ifp_source_bank[i] = recv_ifplog;
         }
       }
       // Increment all indices
@@ -444,9 +443,9 @@ void synchronize_bank()
     }
 
     // Clear IFP buffers
-    send_ifpset.clear();
+    send_ifpdata.clear();
     send_generation.clear();
-    recv_ifpset.clear();
+    recv_ifpdata.clear();
     recv_generation.clear();
   }
 
@@ -454,12 +453,12 @@ void synchronize_bank()
   std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles,
     simulation::source_bank.begin());
   if (settings::iterated_fission_probability) {
-    std::copy(temp_ifp.data(), temp_ifp.data() + settings::n_particles,
+    std::copy(temp_ifplogs.data(), temp_ifplogs.data() + settings::n_particles,
       simulation::ifp_source_bank.begin());
   }
 #endif
   temp_sites.clear();
-  temp_ifp.clear();
+  temp_ifplogs.clear();
 
   simulation::time_bank_sendrecv.stop();
   simulation::time_bank.stop();

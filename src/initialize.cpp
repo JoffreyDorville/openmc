@@ -121,6 +121,13 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (!read_model_xml())
     read_separate_xml_files();
 
+#ifdef OPENMC_MPI
+  // Set the MPI type for IFPEntry if IFP
+  if (settings::iterated_fission_probability) {
+    commit_ifp_entry_mpi_type();
+  }
+#endif // OPENMC_MPI
+
   // Reset locale to previous state
   if (std::setlocale(LC_ALL, prev_locale.c_str()) == NULL) {
     fatal_error("Cannot reset locale.");
@@ -180,24 +187,24 @@ void initialize_mpi(MPI_Comm intracomm)
     MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
   MPI_Type_create_struct(10, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
+}
 
-  // Create structure for IFP data set
-  if (settings::iterated_fission_probability) {
-    IFPSet ifpset;
-  
-    int blocklengths[2] = {1, 1};
-    MPI_Datatype types_ifp[2] = {MPI_DOUBLE, MPI_INT};
-    MPI_Aint offsets[2];
-  
-    MPI_Get_address(&ifpset.lifetime, &offsets[0]);
-    MPI_Get_address(&ifpset.delayed_group, &offsets[1]);
-    for (int i = 1; i >= 0; --i) {
-      offsets[i] -= offsets[0];
-    }
-  
-    MPI_Type_create_struct(2, blocklengths, offsets, types_ifp, &mpi::mpi_type_ifpset);
-    MPI_Type_commit(&mpi::mpi_type_ifpset);
+void commit_ifp_entry_mpi_type()
+{
+  IFPEntry ifpentry;
+
+  int blocklengths[2] = {1, 1};
+  MPI_Datatype types_ifp[2] = {MPI_DOUBLE, MPI_INT};
+  MPI_Aint offsets[2];
+
+  MPI_Get_address(&ifpentry.lifetime, &offsets[0]);
+  MPI_Get_address(&ifpentry.delayed_group, &offsets[1]);
+  for (int i = 1; i >= 0; --i) {
+    offsets[i] -= offsets[0];
   }
+
+  MPI_Type_create_struct(2, blocklengths, offsets, types_ifp, &mpi::ifp_entry);
+  MPI_Type_commit(&mpi::ifp_entry);
 }
 #endif // OPENMC_MPI
 

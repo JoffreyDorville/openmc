@@ -154,8 +154,8 @@ int openmc_finalize()
   if (mpi::source_site != MPI_DATATYPE_NULL) {
     MPI_Type_free(&mpi::source_site);
   }
-  if (mpi::mpi_type_ifpset != MPI_DATATYPE_NULL) {
-    MPI_Type_free(&mpi::mpi_type_ifpset);
+  if (mpi::ifp_entry != MPI_DATATYPE_NULL) {
+    MPI_Type_free(&mpi::ifp_entry);
   }
 #endif
 

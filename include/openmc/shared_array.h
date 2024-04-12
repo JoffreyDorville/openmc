@@ -88,7 +88,7 @@ public:
     return idx;
   }
 
-  int64_t thread_safe_insert(int64_t idx, const T& value)
+  int64_t thread_safe_assign(int64_t idx, const T& value)
   {
     // Atomically increase the size
     int64_t i;

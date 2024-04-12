@@ -212,29 +212,29 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     // Iterated Fission Probability (IFP) method
     // Needs to be done after the delayed group is found
 
-    IFPData updated_ifpdata;
+    IFPLog updated_ifplog;
     if (settings::iterated_fission_probability) {
 
-      const auto& ifpdata = simulation::ifp_source_bank[p.current_work()-1];
+      const auto& ifplog = simulation::ifp_source_bank[p.current_work()-1];
 
-      int idx = ifpdata.n_generation();
+      int idx = ifplog.n_generation();
 
       if (idx < settings::ifp_n_generation) {
         for (int i = 0; i < idx; i++) {
-          updated_ifpdata.lifetimes(i) = ifpdata.lifetimes(i);
-          updated_ifpdata.delayed_groups(i) = ifpdata.delayed_groups(i);
+          updated_ifplog.lifetimes(i) = ifplog.lifetimes(i);
+          updated_ifplog.delayed_groups(i) = ifplog.delayed_groups(i);
         }
-        updated_ifpdata.lifetimes(idx) = p.lifetime();
-        updated_ifpdata.delayed_groups(idx) = site.delayed_group;
-        updated_ifpdata.n_generation() = ifpdata.n_generation() + 1;
+        updated_ifplog.lifetimes(idx) = p.lifetime();
+        updated_ifplog.delayed_groups(idx) = site.delayed_group;
+        updated_ifplog.n_generation() = ifplog.n_generation() + 1;
       } else if (idx == settings::ifp_n_generation) {
         for (int i = 0; i < idx-1; i++) {
-          updated_ifpdata.lifetimes(i) = ifpdata.lifetimes(i+1);
-          updated_ifpdata.delayed_groups(i) = ifpdata.delayed_groups(i+1);
+          updated_ifplog.lifetimes(i) = ifplog.lifetimes(i+1);
+          updated_ifplog.delayed_groups(i) = ifplog.delayed_groups(i+1);
         }
-        updated_ifpdata.lifetimes(idx-1) = p.lifetime();
-        updated_ifpdata.delayed_groups(idx-1) = site.delayed_group;
-        updated_ifpdata.n_generation() = ifpdata.n_generation();
+        updated_ifplog.lifetimes(idx-1) = p.lifetime();
+        updated_ifplog.delayed_groups(idx-1) = site.delayed_group;
+        updated_ifplog.n_generation() = ifplog.n_generation();
       } else {
         fatal_error("WIP: was not expecting that...");
       }      
@@ -258,8 +258,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         break;
       }
       if (settings::iterated_fission_probability) {
-        simulation::ifp_fission_bank.thread_safe_insert(idx, updated_ifpdata);
-        //simulation::ifp_fission_bank.insert(simulation::ifp_fission_bank.begin() + idx, updated_ifpdata); not thread safe
+        simulation::ifp_fission_bank.thread_safe_assign(idx, updated_ifplog);
       }
     } else {
       p.secondary_bank().push_back(site);

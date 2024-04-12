@@ -56,17 +56,17 @@ struct SourceSite {
   int64_t progeny_id;
 };
 
-//! Iterated Fission Probability set
-struct IFPSet {
+//! Iterated Fission Probability entry
+struct IFPEntry {
   double lifetime;
   int delayed_group;
 };
 
-//! Iterated Fission Probability data
-struct IFPData {
+//! Iterated Fission Probability log
+struct IFPLog {
 
-  IFPData();
-  IFPData(std::vector<IFPSet>::const_iterator first, std::vector<IFPSet>::const_iterator last, int n_gen);
+  IFPLog();
+  IFPLog(std::vector<IFPEntry>::const_iterator first, std::vector<IFPEntry>::const_iterator last, int n_gen);
 
   //==========================================================================
   // Data members
@@ -75,16 +75,16 @@ struct IFPData {
   //==========================================================================
   // Data members that cannot be protected without compiler warning from HDF5
   // but should be considered protected
-  vector<IFPSet> ifpset_;
+  vector<IFPEntry> ifpdata_;
 
   //==========================================================================
   // Accessor methods
   int& n_generation() { return n_generation_; }
   const int& n_generation() const { return n_generation_; }
-  double& lifetimes(int i) { return ifpset_[i].lifetime; }
-  const double& lifetimes(int i) const { return ifpset_[i].lifetime; }
-  int& delayed_groups(int i) { return ifpset_[i].delayed_group; }
-  const int& delayed_groups(int i) const { return ifpset_[i].delayed_group; }
+  double& lifetimes(int i) { return ifpdata_[i].lifetime; }
+  const double& lifetimes(int i) const { return ifpdata_[i].lifetime; }
+  int& delayed_groups(int i) { return ifpdata_[i].delayed_group; }
+  const int& delayed_groups(int i) const { return ifpdata_[i].delayed_group; }
 };
 
 //! State of a particle used for particle track files

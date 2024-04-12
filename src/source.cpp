@@ -397,10 +397,10 @@ void initialize_source()
     // sample external source distribution
     simulation::source_bank[i] = sample_external_source(&seed);
 
-    // Initialize IFP data if needed
+    // Initialize IFP log if needed
     if (settings::iterated_fission_probability) {
-      IFPData ifpdata;
-      simulation::ifp_source_bank[i] = ifpdata;
+      IFPLog ifplog;
+      simulation::ifp_source_bank[i] = ifplog;
     }
   }
 
