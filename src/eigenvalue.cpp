@@ -27,8 +27,6 @@
 #include <limits>    //for infinity
 #include <string>
 
-#include <unistd.h>  // TODO: remove after debugging
-
 namespace openmc {
 
 //==============================================================================
@@ -144,8 +142,7 @@ void synchronize_bank()
   // sites were created, so overallocate by a factor of 3
   int64_t index_temp = 0;
   
-  vector<SourceSite> temp_sites;
-  temp_sites.resize(3 * simulation::work_per_rank);
+  vector<SourceSite> temp_sites(3 * simulation::work_per_rank);
   vector<IFPData> temp_ifp;
   if (settings::iterated_fission_probability) {
     temp_ifp.resize(3 * simulation::work_per_rank);
@@ -234,12 +231,6 @@ void synchronize_bank()
   simulation::time_bank_sample.stop();
   simulation::time_bank_sendrecv.start();
 
-  //{
-  //  int i=0;
-  //  while (0 == i)
-  //    sleep(5);
-  //}
-
 #ifdef OPENMC_MPI
   // ==========================================================================
   // SEND BANK SITES TO NEIGHBORS
@@ -257,7 +248,7 @@ void synchronize_bank()
       simulation::work_index.begin(), simulation::work_index.end(), start);
 
     // Resize IFP send buffers
-    if (settings::iterated_fission_probability) { // Maybe resize only if more than 1 proc?
+    if (settings::iterated_fission_probability && mpi::n_procs > 1) {
       send_ifpset.resize(settings::ifp_n_generation * 3 * simulation::work_per_rank);
       send_generation.resize(3 * simulation::work_per_rank);
     }
@@ -277,27 +268,33 @@ void synchronize_bank()
 
         if (settings::iterated_fission_probability) {
 
-          // Serialize IFPSet data
-          for (int i = index_local; i < index_local + n; i++) { // TODO: check
-            for (int j = 0; j < settings::ifp_n_generation; j++) {
-              send_ifpset[i*settings::ifp_n_generation+j] = temp_ifp[i].ifpset_[j];
+          // Retrieve the n_generation of the first element that will be sent.
+          // We will later check that every element sent shares the same n_generation value
+          int n_generation_check = temp_ifp[index_local].n_generation();
+
+          for (int i = index_local; i < index_local + n; i++) {
+
+            // Serialize IFPSet data
+            std::copy(temp_ifp[i].ifpset_.begin(), temp_ifp[i].ifpset_.end(), send_ifpset.begin() + i*settings::ifp_n_generation);
+
+            // Check that all n_generation values to send are equal.
+            // That way we can send only one int value for all IFPData.
+            if (temp_ifp[i].n_generation() != n_generation_check) {
+              fatal_error("n_generation should be consistent over all elements during synchronization!");
             }
           }
 
-          // Serialize number of generation
-          for (int i = index_local; i < index_local + n; i++) {
-            send_generation[i] = temp_ifp[i].n_generation();
-          }
+          // Allocate n_generation to the sending buffer
+          send_generation[index_local] = n_generation_check;
 
-          // Send vector values
+          // Send serialized IFPSet data
           requests.emplace_back();
           MPI_Isend(&send_ifpset[settings::ifp_n_generation*index_local], settings::ifp_n_generation*static_cast<int>(n),
             mpi::mpi_type_ifpset, neighbor, mpi::rank, mpi::intracomm, &requests.back());
 
-          // Send number of generation - TODO: at synchronization we can use only one value
+          // Send a single n_generation as it is shared among sent particles
           requests.emplace_back();
-          MPI_Isend(&send_generation[index_local], static_cast<int>(n),
-            MPI_INT, neighbor, mpi::rank, mpi::intracomm, &requests.back());
+          MPI_Isend(&send_generation[index_local], 1, MPI_INT, neighbor, mpi::rank, mpi::intracomm, &requests.back());
 
         }
       }
@@ -336,7 +333,7 @@ void synchronize_bank()
   }
 
   // Resize IFP receive buffers
-  if (settings::iterated_fission_probability) {
+  if (settings::iterated_fission_probability && mpi::n_procs > 1) {
     recv_ifpset.resize(settings::ifp_n_generation*simulation::work_per_rank);
     recv_generation.resize(simulation::work_per_rank);
   }
@@ -369,8 +366,7 @@ void synchronize_bank()
 
         // Receive number of generation
         requests.emplace_back();
-        MPI_Irecv(&recv_generation[index_local], static_cast<int>(n),
-          MPI_INT, neighbor, neighbor, mpi::intracomm, &requests.back());
+        MPI_Irecv(&recv_generation[index_local], 1, MPI_INT, neighbor, neighbor, mpi::intracomm, &requests.back());
       }
 
     } else {
@@ -402,7 +398,7 @@ void synchronize_bank()
 
   if (settings::iterated_fission_probability) {
 
-    // Pass the information to ifp_source_bank
+    // Deserialize IFPData
     start = simulation::work_index[mpi::rank];
     index_local = 0;
 
@@ -427,8 +423,9 @@ void synchronize_bank()
 
       if (neighbor != mpi::rank) {
 
+        // Store deserialized IFPData in ifp_source_bank
         for (int i = index_local; i < index_local + n; i++) { // TODO: check that recv_ifpdata is correctly constructed
-          IFPData recv_ifpdata(recv_ifpset.begin() + settings::ifp_n_generation*i, recv_ifpset.begin() + settings::ifp_n_generation*(i+1), recv_generation[i]);
+          IFPData recv_ifpdata(recv_ifpset.begin() + settings::ifp_n_generation*i, recv_ifpset.begin() + settings::ifp_n_generation*(i+1), recv_generation[index_local]);
           simulation::ifp_source_bank[i] = recv_ifpdata;
         }
       }
