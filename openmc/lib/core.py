@@ -26,9 +26,7 @@ class _SourceSite(Structure):
                 ('surf_id', c_int),
                 ('particle', c_int),
                 ('parent_id', c_int64),
-                ('progeny_id', c_int64),
-                ('lifetimes', c_double*15),  # Needs to be consitent with IFP_MAX_N_GENERATION
-                ('ifp_n_generation', c_int64)]
+                ('progeny_id', c_int64)]
 
 
 # Define input type for numpy arrays that will be passed into C++ functions
