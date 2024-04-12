@@ -150,7 +150,15 @@ void synchronize_bank()
 
   for (int64_t i = 0; i < simulation::fission_bank.size(); i++) {
     const auto& site = simulation::fission_bank[i];
-    const auto& ifpdata = simulation::ifp_fission_bank[i]; // TODO: manage if no ifp_fission_bank entry
+
+    // Declare pointer to constant IFPData that will be initialized if
+    // ifp is requested by the user.
+    const IFPData* ifpdata_ptr;
+
+    // Initialize the ifpdata pointer
+    if (settings::iterated_fission_probability) {
+      ifpdata_ptr = &simulation::ifp_fission_bank[i];
+    }
 
     // If there are less than n_particles particles banked, automatically add
     // int(n_particles/total) sites to temp_sites. For example, if you need
@@ -160,7 +168,7 @@ void synchronize_bank()
       for (int64_t j = 1; j <= settings::n_particles / total; ++j) {
         temp_sites[index_temp] = site;
         if (settings::iterated_fission_probability) {
-          temp_ifp[index_temp] = ifpdata;
+          temp_ifp[index_temp] = *ifpdata_ptr;
         }
         ++index_temp;
       }
@@ -170,7 +178,7 @@ void synchronize_bank()
     if (prn(&seed) < p_sample) {
       temp_sites[index_temp] = site;
       if (settings::iterated_fission_probability) {
-        temp_ifp[index_temp] = ifpdata;
+        temp_ifp[index_temp] = *ifpdata_ptr;
       }
       ++index_temp;
     }
