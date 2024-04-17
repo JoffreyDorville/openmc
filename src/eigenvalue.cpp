@@ -258,7 +258,7 @@ void synchronize_bank()
     // Resize IFP send buffers
     if (settings::iterated_fission_probability && mpi::n_procs > 1) {
       send_ifpdata.resize(settings::ifp_n_generation * 3 * simulation::work_per_rank);
-      send_generation.resize(3 * simulation::work_per_rank);
+      send_generation.resize(mpi::n_procs);
     }
 
     while (start < finish) {
@@ -293,7 +293,7 @@ void synchronize_bank()
           }
 
           // Allocate n_generation to the sending buffer
-          send_generation[index_local] = n_generation_check;
+          send_generation[neighbor] = n_generation_check;
 
           // Send serialized IFP data
           requests.emplace_back();
@@ -302,7 +302,7 @@ void synchronize_bank()
 
           // Send a single n_generation as it is shared among sent particles
           requests.emplace_back();
-          MPI_Isend(&send_generation[index_local], 1, MPI_INT, neighbor, mpi::rank, mpi::intracomm, &requests.back());
+          MPI_Isend(&send_generation[neighbor], 1, MPI_INT, neighbor, mpi::rank, mpi::intracomm, &requests.back());
         }
       }
 
@@ -327,7 +327,7 @@ void synchronize_bank()
 
   vector<IFPEntry> recv_ifpdata;
   vector<int> recv_generation;
-  vector<int> deserialization_info;
+  vector<DeserializationInfo> deserialization_info;
 
   // Determine what process has the source sites that will need to be stored at
   // the beginning of this processor's source bank.
@@ -343,7 +343,7 @@ void synchronize_bank()
   // Resize IFP receive buffers
   if (settings::iterated_fission_probability && mpi::n_procs > 1) {
     recv_ifpdata.resize(settings::ifp_n_generation*simulation::work_per_rank);
-    recv_generation.resize(simulation::work_per_rank);
+    recv_generation.resize(mpi::n_procs);
   }
 
   while (start < simulation::work_index[mpi::rank + 1]) {
@@ -374,11 +374,11 @@ void synchronize_bank()
 
         // Receive number of generation
         requests.emplace_back();
-        MPI_Irecv(&recv_generation[index_local], 1, MPI_INT, neighbor, neighbor, mpi::intracomm, &requests.back());
+        MPI_Irecv(&recv_generation[neighbor], 1, MPI_INT, neighbor, neighbor, mpi::intracomm, &requests.back());
 
         // Deserialization info to reconstruct ifplogs later
-        deserialization_info.push_back(index_local);
-        deserialization_info.push_back(n);
+        DeserializationInfo info = {index_local, n, neighbor};
+        deserialization_info.push_back(info);
       }
 
     } else {
@@ -412,13 +412,14 @@ void synchronize_bank()
 
     // Deserialize IFPLog
     int64_t n;
-    for (int j = 0; j < deserialization_info.size()/2; j++) {
-      index_local = deserialization_info[2*j];
-      n = deserialization_info[2*j+1];
+    for (auto info : deserialization_info) {
+      index_local = info.index_local;
+      n = info.n;
+      neighbor = info.neighbor;
 
       // Store deserialized IFPLog in ifp_source_bank
       for (int i = index_local; i < index_local + n; i++) {
-        IFPLog recv_ifplog(recv_ifpdata.begin() + settings::ifp_n_generation*i, recv_ifpdata.begin() + settings::ifp_n_generation*(i+1), recv_generation[index_local]);
+        IFPLog recv_ifplog(recv_ifpdata.begin() + settings::ifp_n_generation*i, recv_ifpdata.begin() + settings::ifp_n_generation*(i+1), recv_generation[neighbor]);
         simulation::ifp_source_bank[i] = recv_ifplog;
       }
     }
