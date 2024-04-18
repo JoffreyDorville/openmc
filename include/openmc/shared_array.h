@@ -88,24 +88,48 @@ public:
     return idx;
   }
 
+  //! Increase the size of the container by one and assign a value to the
+  //! array at a given index. Returns 0 if the index was not greater than
+  //! or equal to the capacity of the SharedArray. Returns -1 if the index
+  //! was out of bound and set the size to be equal to the capacity.
+  //!
+  //! Consistency between size_ and the position of the final element
+  //! in data_ is not guaranteed by this function as size_ is incremented
+  //! in each call, but the index can be given in a discontinuous manner.
+  //! As long as indexes are not greater than or equal to the capacity,
+  //! values are still accessible with the [] operator even if size_ lower
+  //! than the index, because the [] operator does not perform bounds
+  //! checking.
+  //
+  //! \idx The index in the array where to write the value to
+  //! \value The value of the element to append
+  //! \return 0. In the event that the index would be greater than what
+  //! was allocated for the container, return -1.
   int64_t thread_safe_assign(int64_t idx, const T& value)
   {
-    // Atomically increase the size
-    int64_t i;
-#pragma omp atomic capture seq_cst
-    i = size_++;
-
-    // Check that we haven't written off the end of the array
+    // Check that we will not write off the end of the array
     if (idx >= capacity_) {
 #pragma omp atomic write seq_cst
       size_ = capacity_;
       return -1;
+    } else {
+      // Atomically increase the size
+#pragma omp atomic update seq_cst
+      size_++;
     }
+  
+    // Another option would be to compare the size of the vector to the idx value
+    // and update the size accordingly:
+    //#pragma omp atomic update compare seq_cst // OpenMP 5.1 needed for "compare"
+    //    if (size_ <= idx) {size_ = idx + 1; } // TODO: test
+
+    // In this case, the problem is that you can have unassigned (but initialized)
+    // values in data because the idx for this position has not been called yet.
 
     // Copy element value to the array
     data_[idx] = value;
 
-    return idx;
+    return 0;
   }
 
   //! Free any space that was allocated for the container. Set the
