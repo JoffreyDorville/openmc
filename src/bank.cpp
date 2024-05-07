@@ -28,7 +28,7 @@ SharedArray<SourceSite> fission_bank;
 
 vector<IFPLog> ifp_source_bank;
 
-SharedArray<IFPLog> ifp_fission_bank;
+vector<IFPLog> ifp_fission_bank;
 
 // Each entry in this vector corresponds to the number of progeny produced
 // this generation for the particle located at that index. This vector is

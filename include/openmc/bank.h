@@ -24,7 +24,7 @@ extern SharedArray<SourceSite> fission_bank;
 
 extern vector<IFPLog> ifp_source_bank;
 
-extern SharedArray<IFPLog> ifp_fission_bank;
+extern vector<IFPLog> ifp_fission_bank;
 
 extern vector<int64_t> progeny_per_particle;
 

@@ -257,8 +257,12 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         // Break out of loop as no more sites can be added to fission bank
         break;
       }
+      // If IFP, add the IFP log in the ifp_fission_bank using the same index
+      // as the one used to append the fission site to the fission bank.
+      // Multithreading protection is guaranteed by the index returned by the
+      // previous thread_safe_append call.
       if (settings::iterated_fission_probability) {
-        simulation::ifp_fission_bank.thread_safe_assign(idx, updated_ifplog);
+        simulation::ifp_fission_bank[idx] = updated_ifplog;
       }
     } else {
       p.secondary_bank().push_back(site);
