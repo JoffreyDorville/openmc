@@ -882,18 +882,34 @@ void read_settings_xml(pugi::xml_node root)
 
   // Check for Iterated Fission Probability (IFP)
   if (check_for_node(root, "iterated_fission_probability")) {
-    iterated_fission_probability = true;
-    // Get iterated_fission_probability write node
-    xml_node node_ifp = root.child("iterated_fission_probability");
+    
+    // IFP only works with eigenvalue calculations
+    if (run_mode == RunMode::EIGENVALUE) {
+      iterated_fission_probability = true;
+      // Get iterated_fission_probability write node
+      xml_node node_ifp = root.child("iterated_fission_probability");
 
-    // Determine number of generation for IFP
-    if (check_for_node(node_ifp, "n_generation")) {
-      ifp_n_generation = std::stoi(get_node_value(node_ifp, "n_generation"));
-    }
-    if (ifp_n_generation <= 0) {
+      // Number of generation for IFP
+      if (check_for_node(node_ifp, "n_generation")) {
+        ifp_n_generation = std::stoi(get_node_value(node_ifp, "n_generation"));
+        if (ifp_n_generation <= 0) {
+          fatal_error("<n_generation> must be greater than 0.");
+        }
+        // Avoid tallying 0 if IFP logs are not complete when active cycles start
+        if (ifp_n_generation > n_inactive) {
+          fatal_error(
+            "It is recommended to have <n_generation> lower than or equal to the "
+            "number of inactive cycles.");
+        }
+      } else {
+        fatal_error(
+          "<n_generation> must be specified as a subelement of "
+          "<iterated_fission_probability>.");
+      }
+    } else {
       fatal_error(
-        "The 'n_generation' subelement/attribute of the "
-        "<iterated_fission_probability> element must contain a value greater than 0");
+        "Iterated Fission Probability can only be used in an eigenvalue "
+        "calculation.");
     }
   }
 
