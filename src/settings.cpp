@@ -898,7 +898,7 @@ void read_settings_xml(pugi::xml_node root)
         // Avoid tallying 0 if IFP logs are not complete when active cycles start
         if (ifp_n_generation > n_inactive) {
           fatal_error(
-            "It is recommended to have <n_generation> lower than or equal to the "
+            "<n_generation> must be lower than or equal to the "
             "number of inactive cycles.");
         }
       } else {

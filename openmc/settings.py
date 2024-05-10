@@ -734,7 +734,7 @@ class Settings:
             Mapping,
         )
         for key, value in iterated_fission_probability.items():
-            cv.check_value("Iterated Fission Probability key", key, ("n_generation"))
+            cv.check_value("Iterated Fission Probability key", key, ["n_generation"])
             if key == "n_generation":
                 cv.check_type("number of generation", value, Integral)
                 cv.check_greater_than("number of generation", value, 0)

@@ -83,7 +83,7 @@ void read_eigenvalue_hdf5(hid_t group);
 // Type definitions
 //==============================================================================
 
-//! Dererialization info for IFP data
+//! Deserialization info for IFP data
 struct DeserializationInfo {
   int64_t index_local;
   int64_t n;

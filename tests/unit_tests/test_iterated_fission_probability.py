@@ -1,5 +1,5 @@
 """Test the Iterated Fission Probability (IFP) method to compute adjoint-weighted
-kinetics parameters using dedicated tallies for generation time and beta effective."""
+kinetics parameters using dedicated tallies."""
 
 import pytest
 import openmc
