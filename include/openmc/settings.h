@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_set>
+#include <map>
 
 #include "pugixml.hpp"
 
@@ -49,6 +50,7 @@ extern "C" bool output_summary;    //!< write summary.h5?
 extern bool output_tallies;        //!< write tallies.out?
 extern bool particle_restart_run;  //!< particle restart run?
 extern "C" bool photon_transport;  //!< photon transport turned on?
+extern bool precursor_drift;       //!< Precursor drift on?
 extern "C" bool reduce_tallies;    //!< reduce tallies at end of batch?
 extern bool res_scat_on;           //!< use resonance upscattering method?
 extern "C" bool restart_run;       //!< restart run?
@@ -153,6 +155,13 @@ extern int trigger_batch_interval; //!< Batch interval for triggers
 extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
+
+extern std::string nekrs_re2_path;     //!< Path to the re2 mesh file from NekRS
+extern std::string nekrs_fld_path;     //!< Path to the field (.fld) file from NekRS
+extern std::string dnp_drift_method;   //!< Integration method to use
+extern double dnp_drift_dt;            //!< Time step used in the integration method [s]
+extern double dnp_drift_external_time; //!< Time for a particle to reenter the system [s]
+extern std::map<std::string, std::vector<int>> dnp_drift_bcs; //!< Translation from boundary conditions to NekRS flag
 
 } // namespace settings
 

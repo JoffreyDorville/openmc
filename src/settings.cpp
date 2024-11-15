@@ -57,6 +57,7 @@ bool output_summary {true};
 bool output_tallies {true};
 bool particle_restart_run {false};
 bool photon_transport {false};
+bool precursor_drift {false};
 bool reduce_tallies {true};
 bool res_scat_on {false};
 bool restart_run {false};
@@ -133,6 +134,12 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+std::string nekrs_re2_path;
+std::string nekrs_fld_path;
+std::string dnp_drift_method;
+double dnp_drift_dt;
+double dnp_drift_external_time;
+std::map<std::string, std::vector<int>> dnp_drift_bcs;
 
 } // namespace settings
 
@@ -689,6 +696,72 @@ void read_settings_xml(pugi::xml_node root)
         "it by specifying its ID in an <entropy_mesh> element.");
     }
   }
+
+  // Precursor drift
+  if (check_for_node(root, "precursor_drift")) {
+
+    // Get pointer to precursor_drift node
+    auto node_drift = root.child("precursor_drift");
+
+    // NekRS mesh path
+    if (check_for_node(node_drift, "nekrs_re2_path")) {
+      nekrs_re2_path = get_node_value(node_drift, "nekrs_re2_path");
+    } else {
+      fatal_error("A path to the NekRS mesh file should be defined.");
+    }
+
+    // NekRS field path
+    if (check_for_node(node_drift, "nekrs_fld_path")) {
+      nekrs_fld_path = get_node_value(node_drift, "nekrs_fld_path");
+    } else {
+      fatal_error("A path to the NekRS field file should be defined.");
+    }
+
+    // Integration method
+    if (check_for_node(node_drift, "method")) {
+      dnp_drift_method = get_node_value(node_drift, "method");
+    } else {
+      fatal_error("An integration method for the precursor drift should be defined.");
+    }
+
+    // Time step
+    if (check_for_node(node_drift, "time_step")) {
+      dnp_drift_dt = std::stod(get_node_value(node_drift, "time_step"));
+    } else {
+      fatal_error("A time step for the precursor drift method should be defined.");
+    }
+
+    // External travel time
+    if (check_for_node(node_drift, "external_travel_time")) {
+      dnp_drift_external_time = std::stod(get_node_value(node_drift, "external_travel_time"));
+    } else {
+      fatal_error("An external travel time for the precursor drift method should be defined.");
+    }
+
+    // Boundary conditions - Inlet
+    if (check_for_node(node_drift, "bc_idx_inlet")) {
+      dnp_drift_bcs["bc_idx_inlet"] = get_node_array<int>(node_drift, "bc_idx_inlet");
+    } else {
+      fatal_error("Inlet boundary condition should be defined.");
+    }
+
+    // Boundary conditions - Outlet
+    if (check_for_node(node_drift, "bc_idx_outlet")) {
+      dnp_drift_bcs["bc_idx_outlet"] = get_node_array<int>(node_drift, "bc_idx_outlet");
+    } else {
+      fatal_error("Outlet boundary condition should be defined.");
+    }
+
+    // Boundary conditions - Walls (optional)
+    if (check_for_node(node_drift, "bc_idx_walls")) {
+      dnp_drift_bcs["bc_idx_walls"] = get_node_array<int>(node_drift, "bc_idx_walls");
+    }
+
+    // Turn on precursor drift
+    precursor_drift = true;
+
+  }
+
   // Uniform fission source weighting mesh
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));

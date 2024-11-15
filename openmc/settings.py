@@ -141,6 +141,27 @@ class Settings:
         Number of particles per generation
     photon_transport : bool
         Whether to use photon transport.
+    precursor_drift: dict
+        Whether to model delayed neutron precursor drift or not. Acceptable
+        keys are:
+
+        :nekrs_re2_path:
+            Path to the re2 mesh file from NekRS
+        :nekrs_fld_path:
+            Path to the field (.fld) file from NekRS
+        :method:
+            Integration method to use
+        :time_step:
+            Time step used in the integration method
+        :external_travel_time:
+            Time for a particle to reenter the system
+        :bc_idx_inlet:
+            Translation from inlet boundary conditions to NekRS flag
+        :bc_idx_outlet:
+            Translation from outlet boundary conditions to NekRS flag
+        :bc_idx_walls:
+            Translation from walls boundary conditions to NekRS flag
+
     plot_seed : int
        Initial seed for randomly generated plot colors.
     ptables : bool
@@ -324,6 +345,9 @@ class Settings:
         self._ptables = None
         self._seed = None
         self._survival_biasing = None
+
+        # Precursor drift
+        self._precursor_drift = {}
 
         # Shannon entropy mesh
         self._entropy_mesh = None
@@ -597,6 +621,31 @@ class Settings:
     def survival_biasing(self, survival_biasing: bool):
         cv.check_type('survival biasing', survival_biasing, bool)
         self._survival_biasing = survival_biasing
+
+    @property
+    def precursor_drift(self) -> dict:
+        return self._precursor_drift
+    
+    @precursor_drift.setter
+    def precursor_drift(self, precursor_drift: dict):
+        cv.check_type('precursor drift options', precursor_drift, Mapping)
+        for key, value in precursor_drift.items():
+            if key in ["nekrs_re2_path", "nekrs_fld_path"]:
+                cv.check_type("precursor drift paths", value, str)
+            elif key == "method":
+                cv.check_type("precursor drift method", value, str)
+            elif key == "time_step":
+                cv.check_type('precursor drift time step', value, Real)
+                cv.check_greater_than('precursor drift time step', value, 0.0)
+            elif key == "external_travel_time":
+                cv.check_type('precursor drift external travel time', value, Real)
+            elif key in ["bc_idx_inlet", "bc_idx_outlet", "bc_idx_walls"]:
+                cv.check_type('precursor drift boundary conditions', value, Iterable, Integral)
+                for val in value:
+                    cv.check_greater_than('precursor drift boundary conditions', val, 0)
+            else:
+                raise ValueError(f"Unknown key '{key}' encountered when setting precursor drift options.")
+        self._precursor_drift = precursor_drift
 
     @property
     def entropy_mesh(self) -> RegularMesh:
@@ -1298,6 +1347,18 @@ class Settings:
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(value)
 
+    def _create_precursor_drift_subelement(self, root):
+        if self._precursor_drift:
+            element = ET.SubElement(root, "precursor_drift")
+            for key, value in self._precursor_drift.items():
+                if key in ["bc_idx_inlet", "bc_idx_outlet", "bc_idx_walls"]:
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = ' '.join(
+                        str(x) for x in self._precursor_drift[key])
+                else:
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = str(value)
+
     def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
         if self.entropy_mesh is None:
             return
@@ -1717,6 +1778,19 @@ class Settings:
                 if value is not None:
                     self.cutoff[key] = float(value)
 
+    def _precursor_drift_from_xml_element(self, root):
+        elem = root.find('precursor_drift')
+        if elem is not None:
+            for key in ('nekrs_re2_path', 'nekrs_fld_path', 'method', 'time_step', 'external_travel_time', 'bc_idx_inlet', 'bc_idx_outlet', 'bc_idx_walls'):
+                value = get_text(elem, key)
+                if value is not None:
+                    if key in ('nekrs_re2_path', 'nekrs_fld_path', 'method'):
+                        self.precursor_drift[key] = value
+                    if key in ('time_step', 'external_travel_time'):
+                        self.precursor_drift[key] = float(value)
+                    if key in ('bc_idx_inlet', 'bc_idx_outlet', 'bc_idx_walls'):
+                        self.precursor_drift[key] = [int(x) for x in value.split()]
+ 
     def _entropy_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'entropy_mesh')
         if text is None:
@@ -1942,6 +2016,7 @@ class Settings:
         self._create_seed_subelement(element)
         self._create_survival_biasing_subelement(element)
         self._create_cutoff_subelement(element)
+        self._create_precursor_drift_subelement(element)
         self._create_entropy_mesh_subelement(element, mesh_memo)
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
@@ -2048,6 +2123,7 @@ class Settings:
         settings._seed_from_xml_element(elem)
         settings._survival_biasing_from_xml_element(elem)
         settings._cutoff_from_xml_element(elem)
+        settings._precursor_drift_from_xml_element(elem)
         settings._entropy_mesh_from_xml_element(elem, meshes)
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)
