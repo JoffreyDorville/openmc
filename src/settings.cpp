@@ -134,6 +134,7 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+std::string dnp_drift_library_path;
 std::string nekrs_re2_path;
 std::string nekrs_fld_path;
 std::string dnp_drift_method;
@@ -702,6 +703,13 @@ void read_settings_xml(pugi::xml_node root)
 
     // Get pointer to precursor_drift node
     auto node_drift = root.child("precursor_drift");
+
+    // External library path
+    if (check_for_node(node_drift, "library_path")) {
+      dnp_drift_library_path = get_node_value(node_drift, "library_path");
+    } else {
+      fatal_error("A path to the external library should be defined.");
+    }
 
     // NekRS mesh path
     if (check_for_node(node_drift, "nekrs_re2_path")) {

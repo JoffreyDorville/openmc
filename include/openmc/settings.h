@@ -156,6 +156,7 @@ extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
 
+extern std::string dnp_drift_library_path; //!< Path to DNP drift library
 extern std::string nekrs_re2_path;     //!< Path to the re2 mesh file from NekRS
 extern std::string nekrs_fld_path;     //!< Path to the field (.fld) file from NekRS
 extern std::string dnp_drift_method;   //!< Integration method to use

@@ -1,5 +1,7 @@
 #include "openmc/finalize.h"
 
+#include <dlfcn.h> // for dlclose
+
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cmfd_solver.h"
@@ -166,6 +168,13 @@ int openmc_finalize()
   if (mpi::source_site != MPI_DATATYPE_NULL)
     MPI_Type_free(&mpi::source_site);
 #endif
+
+  // Free precursor drift library
+  if (settings::precursor_drift) {
+    if (simulation::dnp_library) {
+      dlclose(simulation::dnp_library);
+    }
+  }
 
   return 0;
 }

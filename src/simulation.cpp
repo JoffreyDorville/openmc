@@ -318,6 +318,8 @@ const RegularMesh* ufs_mesh {nullptr};
 vector<double> k_generation;
 vector<int64_t> work_index;
 
+void* dnp_library {nullptr};
+
 } // namespace simulation
 
 //==============================================================================

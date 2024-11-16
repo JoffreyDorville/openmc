@@ -145,6 +145,8 @@ class Settings:
         Whether to model delayed neutron precursor drift or not. Acceptable
         keys are:
 
+        :library_path:
+            Path to the external library
         :nekrs_re2_path:
             Path to the re2 mesh file from NekRS
         :nekrs_fld_path:
@@ -630,7 +632,7 @@ class Settings:
     def precursor_drift(self, precursor_drift: dict):
         cv.check_type('precursor drift options', precursor_drift, Mapping)
         for key, value in precursor_drift.items():
-            if key in ["nekrs_re2_path", "nekrs_fld_path"]:
+            if key in ["library_path", "nekrs_re2_path", "nekrs_fld_path"]:
                 cv.check_type("precursor drift paths", value, str)
             elif key == "method":
                 cv.check_type("precursor drift method", value, str)
@@ -1784,7 +1786,7 @@ class Settings:
             for key in ('nekrs_re2_path', 'nekrs_fld_path', 'method', 'time_step', 'external_travel_time', 'bc_idx_inlet', 'bc_idx_outlet', 'bc_idx_walls'):
                 value = get_text(elem, key)
                 if value is not None:
-                    if key in ('nekrs_re2_path', 'nekrs_fld_path', 'method'):
+                    if key in ('library_path', 'nekrs_re2_path', 'nekrs_fld_path', 'method'):
                         self.precursor_drift[key] = value
                     if key in ('time_step', 'external_travel_time'):
                         self.precursor_drift[key] = float(value)
