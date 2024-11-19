@@ -748,21 +748,21 @@ void read_settings_xml(pugi::xml_node root)
 
     // Boundary conditions - Inlet
     if (check_for_node(node_drift, "bc_idx_inlet")) {
-      dnp_drift_bcs["bc_idx_inlet"] = get_node_array<int>(node_drift, "bc_idx_inlet");
+      dnp_drift_bcs["inlet"] = get_node_array<int>(node_drift, "bc_idx_inlet");
     } else {
       fatal_error("Inlet boundary condition should be defined.");
     }
 
     // Boundary conditions - Outlet
     if (check_for_node(node_drift, "bc_idx_outlet")) {
-      dnp_drift_bcs["bc_idx_outlet"] = get_node_array<int>(node_drift, "bc_idx_outlet");
+      dnp_drift_bcs["outlet"] = get_node_array<int>(node_drift, "bc_idx_outlet");
     } else {
       fatal_error("Outlet boundary condition should be defined.");
     }
 
     // Boundary conditions - Walls (optional)
     if (check_for_node(node_drift, "bc_idx_walls")) {
-      dnp_drift_bcs["bc_idx_walls"] = get_node_array<int>(node_drift, "bc_idx_walls");
+      dnp_drift_bcs["walls"] = get_node_array<int>(node_drift, "bc_idx_walls");
     }
 
     // Turn on precursor drift
