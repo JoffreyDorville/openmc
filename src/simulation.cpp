@@ -320,6 +320,8 @@ vector<int64_t> work_index;
 
 void* dnp_library {nullptr};
 
+dnp_transport_handle dnp_transport;
+
 } // namespace simulation
 
 //==============================================================================

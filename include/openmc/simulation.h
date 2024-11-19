@@ -49,6 +49,10 @@ extern vector<int64_t> work_index;
 
 extern void* dnp_library;
 
+typedef bool (*dnp_transport_handle)(double&, double&, double&, double);
+
+extern dnp_transport_handle dnp_transport;
+
 } // namespace simulation
 
 //==============================================================================
