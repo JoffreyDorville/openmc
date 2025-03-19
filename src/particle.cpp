@@ -465,14 +465,14 @@ void Particle::event_death()
   }
 
 // Contribute tally reduction variables to global accumulator
-#pragma omp atomic
-  global_tally_absorption += keff_tally_absorption();
-#pragma omp atomic
-  global_tally_collision += keff_tally_collision();
-#pragma omp atomic
-  global_tally_tracklength += keff_tally_tracklength();
-#pragma omp atomic
-  global_tally_leakage += keff_tally_leakage();
+//#pragma omp atomic
+//  global_tally_absorption += keff_tally_absorption();
+//#pragma omp atomic
+//  global_tally_collision += keff_tally_collision();
+//#pragma omp atomic
+//  global_tally_tracklength += keff_tally_tracklength();
+//#pragma omp atomic
+//  global_tally_leakage += keff_tally_leakage();
 
   // Reset particle tallies once accumulated
   keff_tally_absorption() = 0.0;

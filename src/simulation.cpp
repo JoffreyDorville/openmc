@@ -785,17 +785,31 @@ void transport_history_based_single_particle(Particle& p)
     }
     p.event_revive_from_secondary();
   }
-  p.event_death();
+  //p.event_death();
 }
 
 void transport_history_based()
 {
-#pragma omp parallel for schedule(runtime)
+  double local_absorption = 0.0;
+  double local_collision = 0.0;
+  double local_tracklength = 0.0;
+  double local_leakage = 0.0;
+#pragma omp parallel for schedule(runtime) reduction(+:local_absorption,local_collision,local_tracklength,local_leakage)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
     initialize_history(p, i_work);
     transport_history_based_single_particle(p);
+    local_absorption += p.keff_tally_absorption();
+    local_collision += p.keff_tally_collision();
+    local_tracklength += p.keff_tally_tracklength();
+    local_leakage += p.keff_tally_leakage();
+    p.event_death();
   }
+
+  global_tally_absorption = local_absorption;
+  global_tally_collision = local_collision;
+  global_tally_tracklength = local_tracklength;
+  global_tally_leakage = local_leakage;
 }
 
 void transport_event_based()
