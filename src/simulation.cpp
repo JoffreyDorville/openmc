@@ -614,8 +614,8 @@ void initialize_history(Particle& p, int64_t index_source)
   }
 
 // Add particle's starting weight to count for normalizing tallies later
-#pragma omp atomic
-  simulation::total_weight += p.wgt();
+//#pragma omp atomic
+  //simulation::total_weight += p.wgt();
 
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
@@ -794,10 +794,13 @@ void transport_history_based()
   double local_collision = 0.0;
   double local_tracklength = 0.0;
   double local_leakage = 0.0;
-#pragma omp parallel for schedule(runtime) reduction(+:local_absorption,local_collision,local_tracklength,local_leakage)
+  double local_weight = 0.0;
+
+#pragma omp parallel for schedule(runtime) reduction(+:local_absorption,local_collision,local_tracklength,local_leakage, local_weight)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
     initialize_history(p, i_work);
+    local_weight += p.wgt();
     transport_history_based_single_particle(p);
     local_absorption += p.keff_tally_absorption();
     local_collision += p.keff_tally_collision();
@@ -810,6 +813,7 @@ void transport_history_based()
   global_tally_collision = local_collision;
   global_tally_tracklength = local_tracklength;
   global_tally_leakage = local_leakage;
+  simulation::total_weight = local_weight;
 }
 
 void transport_event_based()
