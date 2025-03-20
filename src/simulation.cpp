@@ -796,9 +796,11 @@ void transport_history_based()
   double local_leakage = 0.0;
   double local_weight = 0.0;
 
-#pragma omp parallel for schedule(runtime) reduction(+:local_absorption,local_collision,local_tracklength,local_leakage, local_weight)
+#pragma omp parallel
+{
+  Particle p;
+  #pragma omp for schedule(runtime) reduction(+:local_absorption,local_collision,local_tracklength,local_leakage, local_weight)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
-    Particle p;
     initialize_history(p, i_work);
     local_weight += p.wgt();
     transport_history_based_single_particle(p);
@@ -814,7 +816,28 @@ void transport_history_based()
   global_tally_tracklength = local_tracklength;
   global_tally_leakage = local_leakage;
   simulation::total_weight = local_weight;
-}
+}}
+
+
+//#pragma omp parallel for schedule(runtime) reduction(+:local_absorption,local_collision,local_tracklength,local_leakage, local_weight)
+//  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+//    
+//    initialize_history(p, i_work);
+//    local_weight += p.wgt();
+//    transport_history_based_single_particle(p);
+//    local_absorption += p.keff_tally_absorption();
+//    local_collision += p.keff_tally_collision();
+//    local_tracklength += p.keff_tally_tracklength();
+//    local_leakage += p.keff_tally_leakage();
+//    p.event_death();
+//  }
+//
+//  global_tally_absorption = local_absorption;
+//  global_tally_collision = local_collision;
+//  global_tally_tracklength = local_tracklength;
+//  global_tally_leakage = local_leakage;
+//  simulation::total_weight = local_weight;
+//}
 
 void transport_event_based()
 {
