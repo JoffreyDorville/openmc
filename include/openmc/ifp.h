@@ -5,6 +5,7 @@
 #include "openmc/particle.h"
 #include "openmc/particle_data.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 
 namespace openmc {
 
@@ -45,24 +46,23 @@ void resize_ifp_data(
 //! \param[in] data Initial version of the list
 //! \return Updated list
 template<typename T>
-vector<T> _ifp(const T& value, const vector<T>& data)
+void _ifp(const T& value, const vector<T>& data, vector<T>& destination)
 {
-  vector<T> updated_data;
-  size_t ifp_idx = data.size();
+  int ifp_idx = (simulation::current_batch - 1) * settings::gen_per_batch +
+                simulation::current_gen - 1;
+
   if (ifp_idx < settings::ifp_n_generation) {
-    updated_data.resize(ifp_idx + 1);
-    for (size_t i = 0; i < ifp_idx; i++) {
-      updated_data[i] = data[i];
+    for (int i = 0; i < ifp_idx; i++) {
+      destination[i] = data[i];
     }
-    updated_data[ifp_idx] = value;
-  } else if (ifp_idx == settings::ifp_n_generation) {
-    updated_data.resize(ifp_idx);
-    for (size_t i = 0; i < ifp_idx - 1; i++) {
-      updated_data[i] = data[i + 1];
+    destination[ifp_idx] = value;
+  } else {
+    for (int i = 0; i < settings::ifp_n_generation - 1; i++) {
+      destination[i] = data[i + 1];
     }
-    updated_data[ifp_idx - 1] = value;
+    destination[settings::ifp_n_generation - 1] = value;
   }
-  return updated_data;
+  return;
 }
 
 //! \brief Iterated Fission Probability (IFP) method.
