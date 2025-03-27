@@ -9,6 +9,14 @@
 
 namespace openmc {
 
+namespace ifp {
+
+extern "C" int current_generation; //!< current generation for IFP
+
+}
+
+void ifp_update_current_generation();
+
 //! Check the value of the IFP parameter for beta effective or both.
 //!
 //! \return true if "BetaEffective" or "Both", false otherwise.
@@ -46,10 +54,9 @@ void resize_ifp_data(
 //! \param[in] data Initial version of the list
 //! \return Updated list
 template<typename T>
-void _ifp(const T& value, const vector<T>& data, vector<T>& destination)
+void _update_ifp(const T& value, const vector<T>& data, vector<T>& destination)
 {
-  int ifp_idx = (simulation::current_batch - 1) * settings::gen_per_batch +
-                simulation::current_gen - 1;
+  int ifp_idx = ifp::current_generation;
 
   if (ifp_idx < settings::ifp_n_generation) {
     for (int i = 0; i < ifp_idx; i++) {
@@ -77,7 +84,7 @@ void _ifp(const T& value, const vector<T>& data, vector<T>& destination)
 //! \param[in] p Particle
 //! \param[in] site Fission site
 //! \param[in] idx Bank index from the thread_safe_append call in physics.cpp
-void ifp(const Particle& p, const SourceSite& site, int64_t idx);
+void update_ifp_data(const Particle& p, const SourceSite& site, int64_t idx);
 
 //! Resize the IFP banks used in the simulation
 void resize_simulation_ifp_banks();

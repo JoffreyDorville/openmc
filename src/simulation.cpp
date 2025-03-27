@@ -505,6 +505,10 @@ void initialize_generation()
     // Store current value of tracklength k
     simulation::keff_generation = simulation::global_tallies(
       GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+
+    if (settings::ifp) {
+      ifp_update_current_generation();
+    }
   }
 }
 

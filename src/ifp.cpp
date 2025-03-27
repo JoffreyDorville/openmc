@@ -10,6 +10,19 @@
 
 namespace openmc {
 
+namespace ifp {
+
+int current_generation = 0;
+
+}
+
+void ifp_update_current_generation()
+{
+  ifp::current_generation =
+    (simulation::current_batch - 1) * settings::gen_per_batch +
+    simulation::current_gen - 1;
+}
+
 bool is_beta_effective_or_both()
 {
   if (settings::ifp_parameter == IFPParameter::BetaEffective ||
@@ -28,17 +41,17 @@ bool is_generation_time_or_both()
   return false;
 }
 
-void ifp(const Particle& p, const SourceSite& site, int64_t idx)
+void update_ifp_data(const Particle& p, const SourceSite& site, int64_t idx)
 {
   if (is_beta_effective_or_both()) {
     const auto& delayed_groups =
       simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
-    _ifp(site.delayed_group, delayed_groups, simulation::ifp_fission_delayed_group_bank[idx]);
+    _update_ifp(site.delayed_group, delayed_groups, simulation::ifp_fission_delayed_group_bank[idx]);
   }
   if (is_generation_time_or_both()) {
     const auto& lifetimes =
       simulation::ifp_source_lifetime_bank[p.current_work() - 1];
-    _ifp(p.lifetime(), lifetimes, simulation::ifp_fission_lifetime_bank[idx]);
+    _update_ifp(p.lifetime(), lifetimes, simulation::ifp_fission_lifetime_bank[idx]);
   }
 }
 
