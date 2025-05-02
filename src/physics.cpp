@@ -193,9 +193,9 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
   // Counter for the number of fission sites successfully stored to the shared
   // fission bank or the secondary particle bank
-  int n_sites_stored;
+  int n_sites_stored = 0;
 
-  for (n_sites_stored = 0; n_sites_stored < nu; n_sites_stored++) {
+  for (int i = 0; i < nu; i++) {
     // Initialize fission site object with particle data
     SourceSite site;
     site.r = p.r();
@@ -240,6 +240,8 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     } else {
       p.secondary_bank().push_back(site);
     }
+
+    n_sites_stored++;
 
     // Set the delayed group on the particle as well
     p.delayed_group() = site.delayed_group;
