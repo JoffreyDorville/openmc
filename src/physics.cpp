@@ -278,17 +278,18 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   }
 }
 
-bool transport_precursor_site(
-  const Reaction& rx, SourceSite* site, Particle& p)
+bool transport_precursor_site(const Reaction& rx, SourceSite* site, Particle& p)
 {
   // Sample decay time for precursor
   double decay_rate = rx.products_[site->delayed_group].decay_rate_;
-  double t_decay = - std::log(prn(p.current_seed())) / decay_rate; // TODO: protect log from 0
+  double t_decay =
+    -std::log(prn(p.current_seed())) / decay_rate; // TODO: protect log from 0
 
-  bool available = simulation::dnp_transport(site->r.x, site->r.y, site->r.z, t_decay);
+  bool available = simulation::dnp_transport(
+    site->r.x, site->r.y, site->r.z, t_decay, *p.current_seed());
 
   if (!available) {
-    //std::cout << "Site cannot be used!\n";
+    // std::cout << "Site cannot be used!\n";
     return false;
   }
   return true;

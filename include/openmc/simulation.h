@@ -49,7 +49,7 @@ extern vector<int64_t> work_index;
 
 extern void* dnp_library;
 
-typedef bool (*dnp_transport_handle)(double&, double&, double&, double);
+typedef bool (*dnp_transport_handle)(double&, double&, double&, double, uint64_t);
 
 extern dnp_transport_handle dnp_transport;
 
