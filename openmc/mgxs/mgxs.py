@@ -2,6 +2,7 @@ import copy
 from numbers import Integral
 import os
 import warnings
+from textwrap import dedent
 
 import h5py
 import numpy as np
@@ -164,7 +165,7 @@ class MGXS:
 
     """
 
-    _params = """
+    _params = dedent("""
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
@@ -251,7 +252,7 @@ class MGXS:
 
         .. versionadded:: 0.13.1
 
-    """
+    """)
 
     # Store whether or not the number density should be removed for microscopic
     # values of this data
@@ -956,7 +957,7 @@ class MGXS:
             self.xs_tally._nuclides = []
             nuclides = self.get_nuclides()
             for nuclide in nuclides:
-                self.xs_tally.nuclides.append(openmc.Nuclide(nuclide))
+                self.xs_tally.nuclides.append(nuclide)
 
         # Remove NaNs which may have resulted from divide-by-zero operations
         self.xs_tally._mean = np.nan_to_num(self.xs_tally.mean)

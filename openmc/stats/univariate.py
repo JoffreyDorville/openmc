@@ -12,7 +12,7 @@ import numpy as np
 from scipy.integrate import trapezoid
 
 import openmc.checkvalue as cv
-from .._xml import get_text
+from .._xml import get_elem_list, get_text
 from ..mixin import EqualityMixin
 
 _INTERPOLATION_SCHEMES = {
@@ -57,8 +57,7 @@ class Univariate(EqualityMixin, ABC):
             return Normal.from_xml_element(elem)
         elif distribution == 'muir':
             # Support older files where Muir had its own class
-            params = [float(x) for x in get_text(elem, 'parameters').split()]
-            return muir(*params)
+            return muir(*get_elem_list(elem, "parameters", float))
         elif distribution == 'tabular':
             return Tabular.from_xml_element(elem)
         elif distribution == 'legendre':
@@ -95,6 +94,45 @@ class Univariate(EqualityMixin, ABC):
             Integral of distribution
         """
         return 1.0
+
+
+def _intensity_clip(intensity: Sequence[float], tolerance: float = 1e-6) -> np.ndarray:
+    """Clip low-importance points from an array of intensities.
+
+    Given an array of intensities, this function returns an array of indices for
+    points that contribute non-negligibly to the total sum of intensities.
+
+    Parameters
+    ----------
+    intensity : sequence of float
+        Intensities in arbitrary units.
+    tolerance : float
+        Maximum fraction of intensities that will be discarded.
+
+    Returns
+    -------
+    Array of indices
+
+    """
+    # Get indices of intensities from largest to smallest
+    index_sort = np.argsort(intensity)[::-1]
+
+    # Get intensities from largest to smallest
+    sorted_intensity = np.asarray(intensity)[index_sort]
+
+    # Determine cumulative sum of probabilities
+    cumsum = np.cumsum(sorted_intensity)
+    cumsum /= cumsum[-1]
+
+    # Find index that satisfies cutoff
+    index_cutoff = np.searchsorted(cumsum, 1.0 - tolerance)
+
+    # Now get indices up to cutoff
+    new_indices = index_sort[:index_cutoff + 1]
+
+    # Put back in the order of the original array and return
+    new_indices.sort()
+    return new_indices
 
 
 class Discrete(Univariate):
@@ -201,7 +239,7 @@ class Discrete(Univariate):
             Discrete distribution generated from XML element
 
         """
-        params = [float(x) for x in get_text(elem, 'parameters').split()]
+        params = get_elem_list(elem, "parameters", float)
         x = params[:len(params)//2]
         p = params[len(params)//2:]
         return cls(x, p)
@@ -283,32 +321,20 @@ class Discrete(Univariate):
         cv.check_less_than("tolerance", tolerance, 1.0, equality=True)
         cv.check_greater_than("tolerance", tolerance, 0.0, equality=True)
 
-        # Determine (reversed) sorted order of probabilities
+        # Compute intensities
         intensity = self.p * self.x
-        index_sort = np.argsort(intensity)[::-1]
 
-        # Get probabilities in above order
-        sorted_intensity = intensity[index_sort]
-
-        # Determine cumulative sum of probabilities
-        cumsum = np.cumsum(sorted_intensity)
-        cumsum /= cumsum[-1]
-
-        # Find index which satisfies cutoff
-        index_cutoff = np.searchsorted(cumsum, 1.0 - tolerance)
-
-        # Now get indices up to cutoff
-        new_indices = index_sort[:index_cutoff + 1]
-        new_indices.sort()
+        # Get indices for intensities above threshold
+        indices = _intensity_clip(intensity, tolerance=tolerance)
 
         # Create new discrete distribution
         if inplace:
-            self.x = self.x[new_indices]
-            self.p = self.p[new_indices]
+            self.x = self.x[indices]
+            self.p = self.p[indices]
             return self
         else:
-            new_x = self.x[new_indices]
-            new_p = self.p[new_indices]
+            new_x = self.x[indices]
+            new_p = self.p[indices]
             return type(self)(new_x, new_p)
 
 
@@ -421,8 +447,8 @@ class Uniform(Univariate):
             Uniform distribution generated from XML element
 
         """
-        params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+        params = get_elem_list(elem, "parameters", float)
+        return cls(*params)
 
 
 class PowerLaw(Univariate):
@@ -454,6 +480,9 @@ class PowerLaw(Univariate):
     """
 
     def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0.):
+        if a >= b:
+            raise ValueError(
+                "Lower bound of sampling interval must be less than upper bound.")
         self.a = a
         self.b = b
         self.n = n
@@ -468,6 +497,9 @@ class PowerLaw(Univariate):
     @a.setter
     def a(self, a):
         cv.check_type('interval lower bound', a, Real)
+        if a < 0:
+            raise ValueError(
+                "PowerLaw sampling is restricted to positive-valued intervals.")
         self._a = a
 
     @property
@@ -477,6 +509,9 @@ class PowerLaw(Univariate):
     @b.setter
     def b(self, b):
         cv.check_type('interval upper bound', b, Real)
+        if b < 0:
+            raise ValueError(
+                "PowerLaw sampling is restricted to positive-valued intervals.")
         self._b = b
 
     @property
@@ -530,8 +565,8 @@ class PowerLaw(Univariate):
             Distribution generated from XML element
 
         """
-        params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+        params = get_elem_list(elem, "parameters", float)
+        return cls(*params)
 
 
 class Maxwell(Univariate):
@@ -710,8 +745,8 @@ class Watt(Univariate):
             Watt distribution generated from XML element
 
         """
-        params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+        params = get_elem_list(elem, "parameters", float)
+        return cls(*params)
 
 
 class Normal(Univariate):
@@ -800,8 +835,8 @@ class Normal(Univariate):
             Normal distribution generated from XML element
 
         """
-        params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+        params = get_elem_list(elem, "parameters", float)
+        return cls(*params)
 
 
 def muir(e0: float, m_rat: float, kt: float):
@@ -1088,9 +1123,10 @@ class Tabular(Univariate):
 
         """
         interpolation = get_text(elem, 'interpolation')
-        params = [float(x) for x in get_text(elem, 'parameters').split()]
-        x = params[:len(params)//2]
-        p = params[len(params)//2:]
+        params = get_elem_list(elem, "parameters", float)        
+        m = (len(params) + 1)//2  # +1 for when len(params) is odd
+        x = params[:m]
+        p = params[m:]
         return cls(x, p, interpolation)
 
     def integral(self):
@@ -1206,7 +1242,7 @@ class Mixture(Univariate):
         for p in probability:
             cv.check_greater_than('mixture distribution probabilities',
                                   p, 0.0, True)
-        self._probability = probability
+        self._probability = np.array(probability, dtype=float)
 
     @property
     def distribution(self):
@@ -1312,40 +1348,63 @@ class Mixture(Univariate):
         ])
 
     def clip(self, tolerance: float = 1e-6, inplace: bool = False) -> Mixture:
-        r"""Remove low-importance points from contained discrete distributions.
+        r"""Remove low-importance points / distributions
 
-        Given a probability mass function :math:`p(x)` with :math:`\{x_1, x_2,
-        x_3, \dots\}` the possible values of the random variable with
-        corresponding probabilities :math:`\{p_1, p_2, p_3, \dots\}`, this
-        function will remove any low-importance points such that :math:`\sum_i
-        x_i p_i` is preserved to within some threshold.
+        Like :meth:`Discrete.clip`, this method will remove low-importance
+        points from discrete distributions contained within the mixture but it
+        will also clip any distributions that have negligible contributions to
+        the overall intensity.
 
         .. versionadded:: 0.14.0
 
         Parameters
         ----------
         tolerance : float
-            Maximum fraction of :math:`\sum_i x_i p_i` that will be discarded
-            for any discrete distributions within the mixture distribution.
+            Maximum fraction of intensities that will be discarded.
         inplace : bool
             Whether to modify the current object in-place or return a new one.
 
         Returns
         -------
-        Discrete distribution with low-importance points removed
+        Distribution with low-importance points / distributions removed
 
         """
+        # Determine integral of original distribution to compare later
+        original_integral = self.integral()
+
+        # Determine indices for any distributions that contribute non-negligibly
+        # to overall intensity
+        intensities = [prob*dist.integral() for prob, dist in
+                       zip(self.probability, self.distribution)]
+        indices = _intensity_clip(intensities, tolerance=tolerance)
+
+        # Clip mixture of distributions
+        probability = self.probability[indices]
+        distribution = [self.distribution[i] for i in indices]
+
+        # Clip points from Discrete distributions
+        distribution = [
+            dist.clip(tolerance, inplace) if isinstance(dist, Discrete) else dist
+            for dist in distribution
+        ]
+
         if inplace:
-            for dist in self.distribution:
-                if isinstance(dist, Discrete):
-                    dist.clip(tolerance, inplace=True)
-            return self
+            # Set attributes of current object and return
+            self.probability = probability
+            self.distribution = distribution
+            new_dist = self
         else:
-            distribution = [
-                dist.clip(tolerance) if isinstance(dist, Discrete) else dist
-                for dist in self.distribution
-            ]
-            return type(self)(self.probability, distribution)
+            # Create new distribution
+            new_dist = type(self)(probability, distribution)
+
+        # Show warning if integral of new distribution is not within
+        # tolerance of original
+        diff = (original_integral - new_dist.integral())/original_integral
+        if diff > tolerance:
+            warn("Clipping mixture distribution resulted in an integral that is "
+                    f"lower by a fraction of {diff} when tolerance={tolerance}.")
+
+        return new_dist
 
 
 def combine_distributions(

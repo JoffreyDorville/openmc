@@ -94,7 +94,7 @@ NATURAL_ABUNDANCE = {
     'Yb174': 0.32025, 'Yb176': 0.12995, 'Lu175': 0.97401,
     'Lu176': 0.02599, 'Hf174': 0.0016, 'Hf176': 0.0526,
     'Hf177': 0.186, 'Hf178': 0.2728, 'Hf179': 0.1362,
-    'Hf180': 0.3508, 'Ta180': 0.0001201, 'Ta181': 0.9998799,
+    'Hf180': 0.3508, 'Ta180_m1': 0.0001201, 'Ta181': 0.9998799,
     'W180': 0.0012, 'W182': 0.265, 'W183': 0.1431,
     'W184': 0.3064, 'W186': 0.2843, 'Re185': 0.374,
     'Re187': 0.626, 'Os184': 0.0002, 'Os186': 0.0159,
@@ -549,7 +549,18 @@ def gnds_name(Z, A, m=0):
     return f'{ATOMIC_SYMBOL[Z]}{A}'
 
 
-def isotopes(element):
+
+def _get_element_symbol(element: str) -> str:
+    if len(element) > 2:
+        symbol = ELEMENT_SYMBOL.get(element.lower())
+        if symbol is None:
+            raise ValueError(f'Element name "{element}" not recognized')
+        return symbol
+    else:
+        return element
+
+
+def isotopes(element: str) -> list[tuple[str, float]]:
     """Return naturally occurring isotopes and their abundances
 
     .. versionadded:: 0.12.1
@@ -570,12 +581,7 @@ def isotopes(element):
         If the element name is not recognized
 
     """
-    # Convert name to symbol if needed
-    if len(element) > 2:
-        symbol = ELEMENT_SYMBOL.get(element.lower())
-        if symbol is None:
-            raise ValueError(f'Element name "{element}" not recognised')
-        element = symbol
+    element = _get_element_symbol(element)
 
     # Get the nuclides present in nature
     result = []
@@ -601,7 +607,7 @@ def zam(name):
 
     """
     try:
-        symbol, A, state = _GNDS_NAME_RE.match(name).groups()
+        symbol, A, state = _GNDS_NAME_RE.fullmatch(name).groups()
     except AttributeError:
         raise ValueError(f"'{name}' does not appear to be a nuclide name in "
                          "GNDS format")

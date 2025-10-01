@@ -106,7 +106,7 @@ def test_complement(reset):
     assert_unbounded(outside_equiv)
 
     # string represention
-    assert str(inside) == '~(1 | -2 | 3)'
+    assert str(inside) == '(-1 2 -3)'
 
     # evaluate method
     assert (0, 0, 0) in inside
@@ -247,6 +247,10 @@ def test_plot():
     region = -openmc.Sphere() & +openmc.XPlane()
     c_before = openmc.Cell()
     region.plot()
+
+    # Close plot to avoid warning
+    import matplotlib.pyplot as plt
+    plt.close()
 
     # Ensure that calling plot doesn't affect cell ID space
     c_after = openmc.Cell()

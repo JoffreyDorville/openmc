@@ -4,7 +4,9 @@ from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
                     c_uint64, c_size_t)
 import sys
 import os
+from pathlib import Path
 from random import getrandbits
+from tempfile import TemporaryDirectory
 
 import numpy as np
 from numpy.ctypeslib import as_array
@@ -25,6 +27,7 @@ class _SourceSite(Structure):
                 ('delayed_group', c_int),
                 ('surf_id', c_int),
                 ('particle', c_int),
+                ('parent_nuclide', c_int),
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]
 
@@ -474,8 +477,11 @@ def run(output=True):
         _dll.openmc_run()
 
 
-def sample_external_source(n_samples=1, prn_seed=None):
-    """Sample external source
+def sample_external_source(
+        n_samples: int = 1000,
+        prn_seed: int | None = None
+) -> openmc.ParticleList:
+    """Sample external source and return source particles.
 
     .. versionadded:: 0.13.1
 
@@ -489,8 +495,8 @@ def sample_external_source(n_samples=1, prn_seed=None):
 
     Returns
     -------
-    list of openmc.SourceParticle
-        List of samples source particles
+    openmc.ParticleList
+        List of sampled source particles
 
     """
     if n_samples <= 0:
@@ -503,14 +509,13 @@ def sample_external_source(n_samples=1, prn_seed=None):
     _dll.openmc_sample_external_source(c_size_t(n_samples), c_uint64(prn_seed), sites_array)
 
     # Convert to list of SourceParticle and return
-    return [
-        openmc.SourceParticle(
+    return openmc.ParticleList([openmc.SourceParticle(
             r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
             delayed_group=site.delayed_group, surf_id=site.surf_id,
             particle=openmc.ParticleType(site.particle)
         )
         for site in sites_array
-    ]
+    ])
 
 
 def simulation_init():
@@ -612,6 +617,73 @@ def run_in_memory(**kwargs):
         yield
     finally:
         finalize()
+
+
+class TemporarySession:
+    """Context manager for running via openmc.lib in a temporary directory.
+
+    This class is useful for accessing functionality from openmc.lib without
+    polluting your current working directory with OpenMC files. It is used
+    internally as a persistent session to avoid loading cross sections multiple
+    times.
+
+    Parameters
+    ----------
+    model : openmc.Model, optional
+        OpenMC model to use for the session. If None, a minimal working model is
+        created.
+    **init_kwargs
+        Keyword arguments to pass to :func:`openmc.lib.init`.
+
+    Attributes
+    ----------
+    model : openmc.Model
+        The OpenMC model used for the session.
+
+    """
+    def __init__(self, model=None, **init_kwargs):
+        self.init_kwargs = init_kwargs
+        if model is None:
+            surf = openmc.Sphere(boundary_type="vacuum")
+            cell = openmc.Cell(region=-surf)
+            model = openmc.Model()
+            model.geometry = openmc.Geometry([cell])
+            model.settings = openmc.Settings(
+                particles=1, batches=1, output={'summary': False})
+        self.model = model
+
+    def __enter__(self):
+        """Initialize the OpenMC library in a temporary directory."""
+        # If already initialized, the context manager is a no-op
+        self.already_initialized = openmc.lib.is_initialized
+        if self.already_initialized:
+            return self
+
+        # Store original working directory
+        self.orig_dir = Path.cwd()
+
+        # Set up temporary directory
+        self.tmp_dir = TemporaryDirectory()
+        working_dir = Path(self.tmp_dir.name)
+        working_dir.mkdir(parents=True, exist_ok=True)
+        os.chdir(working_dir)
+
+        # Export model and initialize OpenMC
+        self.model.export_to_model_xml()
+        openmc.lib.init(**self.init_kwargs)
+
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Finalize the OpenMC library and clean up temporary directory."""
+        if self.already_initialized:
+            return
+
+        try:
+            finalize()
+        finally:
+            os.chdir(self.orig_dir)
+            self.tmp_dir.cleanup()
 
 
 class _DLLGlobal:
