@@ -5,6 +5,7 @@
 #include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/distribution_multi.h"
+#include "openmc/dnp_drift.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
@@ -215,11 +216,14 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
 
-    // Precursor drift for liquid fuel
+    // Explicit transport of Delayed Neutron Precursor (DNP)
     if (site.delayed_group > 0) {
       if (settings::precursor_drift) {
-        bool available = transport_precursor_site(rx, &site, p);
-        if (!available) {
+        // Retrieve the decay time of the DNP
+        double dnp_decay_time = site.time - p.time();
+
+        // Transport DNP
+        if (!transport_dnp(dnp_decay_time, &site, p)) {
           continue;
         }
       }
@@ -293,23 +297,6 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   for (size_t d = 0; d < MAX_DELAYED_GROUPS; d++) {
     p.n_delayed_bank(d) = nu_d[d];
   }
-}
-
-bool transport_precursor_site(const Reaction& rx, SourceSite* site, Particle& p)
-{
-  // Sample decay time for precursor
-  double decay_rate = rx.products_[site->delayed_group].decay_rate_;
-  double t_decay =
-    -std::log(prn(p.current_seed())) / decay_rate; // TODO: protect log from 0
-
-  bool available = simulation::dnp_transport(
-    site->r.x, site->r.y, site->r.z, t_decay, *p.current_seed());
-
-  if (!available) {
-    // std::cout << "Site cannot be used!\n";
-    return false;
-  }
-  return true;
 }
 
 void sample_photon_reaction(Particle& p)

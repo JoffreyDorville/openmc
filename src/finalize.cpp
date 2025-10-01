@@ -8,6 +8,7 @@
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
 #include "openmc/dagmc.h"
+#include "openmc/dnp_drift.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/event.h"
 #include "openmc/geometry.h"
@@ -180,11 +181,8 @@ int openmc_finalize()
   }
 #endif
 
-  // Free precursor drift library
   if (settings::precursor_drift) {
-    if (simulation::dnp_library) {
-      dlclose(simulation::dnp_library);
-    }
+    finalize_dnp_drift();
   }
 
   openmc_reset_random_ray();

@@ -16,6 +16,7 @@
 #include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
+#include "openmc/dnp_drift.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/geometry_aux.h"
@@ -120,31 +121,8 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
     read_separate_xml_files();
 
   // Prepare the link with the external library for precursor drift
-   if (settings::precursor_drift) {
-    typedef void (*dnp_init_handle)(std::string, std::string, std::string, double,
-      double, std::map<std::string, std::vector<int>>);
-
-    simulation::dnp_library = dlopen(settings::dnp_drift_library_path.c_str(), RTLD_LAZY);
-
-    if (!simulation::dnp_library) {
-      fatal_error("Error loading external library for precursor drift!");
-    }
-
-    auto dnp_init = reinterpret_cast<dnp_init_handle>(dlsym(simulation::dnp_library, "initialize"));
-    auto dlsym_error = dlerror();
-    if (dlsym_error) {
-        dlclose(simulation::dnp_library);
-        fatal_error(dlsym_error);
-    }
-    dnp_init(settings::nekrs_re2_path, settings::nekrs_fld_path, settings::dnp_drift_method,
-      settings::dnp_drift_dt, settings::dnp_drift_external_time, settings::dnp_drift_bcs);
-
-    simulation::dnp_transport = reinterpret_cast<simulation::dnp_transport_handle>(dlsym(simulation::dnp_library, "transport_site"));
-    dlsym_error = dlerror();
-    if (dlsym_error) {
-        dlclose(simulation::dnp_library);
-        fatal_error(dlsym_error);
-    }
+  if (settings::precursor_drift) {
+    initialize_dnp_drift();
   }
 
   // Reset locale to previous state
