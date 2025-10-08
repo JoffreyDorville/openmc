@@ -20,6 +20,18 @@ void initialize_dnp_drift();
 //! \return true if the DNP is still in the modeled system, false otherwise.
 bool transport_dnp(double dnp_decay_time, SourceSite* site, Particle& p);
 
+//! Explicit transport of Delayed Neutron Precursor (DNP) for MSRE
+//!
+//! \param[in] dnp_decay_time Decay time of the DNP
+//! \param[in,out] site Fission site corresponding to the emitted delayed
+//! neutron
+//! \param[in, out] p Particle at the origin of the fission event passed for
+//! the random seed
+//! \return true if the DNP is still in the modeled system, false otherwise.
+bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p);
+
+bool transport_dnp_msre_simple(double dnp_decay_time, SourceSite* site, Particle& p);
+
 //! Free memory associated with the external transport library.
 void finalize_dnp_drift();
 
