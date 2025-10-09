@@ -40,10 +40,10 @@ void initialize_dnp_drift()
   }
 }
 
-bool transport_dnp(double dnp_decay_time, SourceSite* site, Particle& p)
+bool transport_dnp(double dnp_decay_time, double& time, SourceSite* site, Particle& p)
 {
   bool available = simulation::dnp_transport(
-    site->r.x, site->r.y, site->r.z, dnp_decay_time, *p.current_seed());
+    site->r.x, site->r.y, site->r.z, time, dnp_decay_time, *p.current_seed());
 
   if (!available) {
     return false;
