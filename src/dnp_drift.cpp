@@ -10,7 +10,7 @@ namespace openmc {
 void initialize_dnp_drift()
 {
   typedef void (*dnp_init_handle)(std::string, std::string, std::string, double,
-    double, std::map<std::string, std::vector<int>>);
+    double, std::map<std::string, std::vector<int>>, bool);
 
   simulation::dnp_library =
     dlopen(settings::dnp_drift_library_path.c_str(), RTLD_LAZY);
@@ -28,7 +28,8 @@ void initialize_dnp_drift()
   }
   dnp_init(settings::nekrs_re2_path, settings::nekrs_fld_path,
     settings::dnp_drift_method, settings::dnp_drift_dt,
-    settings::dnp_drift_external_time, settings::dnp_drift_bcs);
+    settings::dnp_drift_external_time, settings::dnp_drift_bcs,
+    settings::dnp_drift_recycling);
 
   simulation::dnp_transport =
     reinterpret_cast<simulation::dnp_transport_handle>(

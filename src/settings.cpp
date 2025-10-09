@@ -150,6 +150,7 @@ std::string nekrs_fld_path;
 std::string dnp_drift_method;
 double dnp_drift_dt;
 double dnp_drift_external_time;
+bool dnp_drift_recycling;
 std::map<std::string, std::vector<int>> dnp_drift_bcs;
 
 } // namespace settings
@@ -826,6 +827,13 @@ void read_settings_xml(pugi::xml_node root)
       dnp_drift_external_time = std::stod(get_node_value(node_drift, "external_travel_time"));
     } else {
       fatal_error("An external travel time for the precursor drift method should be defined.");
+    }
+
+    // Recycling mode
+    if (check_for_node(node_drift, "recycling")) {
+      dnp_drift_recycling = get_node_value_bool(node_drift, "recycling");
+    } else {
+      fatal_error("Recycling mode use for the precursor drift method should be defined.");
     }
 
     // Boundary conditions - Inlet

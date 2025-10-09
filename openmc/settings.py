@@ -171,6 +171,8 @@ class Settings:
             Time step used in the integration method
         :external_travel_time:
             Time for a particle to reenter the system
+        :recycling:
+            Recycling mode on or off
         :bc_idx_inlet:
             Translation from inlet boundary conditions to NekRS flag
         :bc_idx_outlet:
@@ -717,6 +719,8 @@ class Settings:
                 cv.check_greater_than('precursor drift time step', value, 0.0)
             elif key == "external_travel_time":
                 cv.check_type('precursor drift external travel time', value, Real)
+            elif key == "recycling":
+                cv.check_type('precursor drift recycling', value, bool)
             elif key in ["bc_idx_inlet", "bc_idx_outlet", "bc_idx_walls"]:
                 cv.check_type('precursor drift boundary conditions', value, Iterable, Integral)
                 for val in value:
@@ -1989,11 +1993,13 @@ class Settings:
     def _precursor_drift_from_xml_element(self, root):
         elem = root.find('precursor_drift')
         if elem is not None:
-            for key in ('nekrs_re2_path', 'nekrs_fld_path', 'method', 'time_step', 'external_travel_time', 'bc_idx_inlet', 'bc_idx_outlet', 'bc_idx_walls'):
+            for key in ('nekrs_re2_path', 'nekrs_fld_path', 'method', 'time_step', 'external_travel_time', 'recycling', 'bc_idx_inlet', 'bc_idx_outlet', 'bc_idx_walls'):
                 value = get_text(elem, key)
                 if value is not None:
                     if key in ('library_path', 'nekrs_re2_path', 'nekrs_fld_path', 'method'):
                         self.precursor_drift[key] = value
+                    if key == 'recycling':
+                        self.precursor_drift[key] = value in ('true', '1')
                     if key in ('time_step', 'external_travel_time'):
                         self.precursor_drift[key] = float(value)
                     if key in ('bc_idx_inlet', 'bc_idx_outlet', 'bc_idx_walls'):
