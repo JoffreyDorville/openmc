@@ -218,7 +218,7 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
           break;
 
         // Second approach: adjust z linearily, randomly sample x and y 
-        } else if (upper_head_method == "linear_z_radom_x_y") {
+        } else if (upper_head_method == "linear_z_random_x_y") {
 
           z += remaining_time * mean_velocity_upper_head;
           remaining_time = 0.;
