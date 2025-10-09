@@ -141,6 +141,12 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
   double h_upper_head = 17.13;
   double mean_velocity_upper_head = h_upper_head / 3.9;
 
+  // Method selection
+  //std::string channel_method = "residence_time";
+  std::string channel_method = "explicit";
+  std::string upper_head_method = "random";
+  //std::string upper_head_method = "linear_z_random_x_y";
+
   // Initialization
   double x = site->r.x;
   double y = site->r.y;
@@ -166,20 +172,49 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
     // Travelling in the channel
     if (location == "channel") {
 
-      dist = h_channel - z;
-      time = dist / mean_velocity_channel;
+      // First approach: residence time
+      if (channel_method == "residence_time") {
 
-      // Decay in the channel for this iteration
-      if (time > remaining_time) {
-        z += remaining_time * mean_velocity_channel;
-        remaining_time = 0.;
-        break;
+        dist = h_channel - z;
+        time = dist / mean_velocity_channel;
 
-      // Continue to next location
-      } else {
-        location = "upper_head";
-        z = h_channel;
-        remaining_time -= time;
+        // Decay in the channel for this iteration
+        if (time > remaining_time) {
+          z += remaining_time * mean_velocity_channel;
+          remaining_time = 0.;
+          break;
+
+        // Continue to next location
+        } else {
+          location = "upper_head";
+          z = h_channel;
+          remaining_time -= time;
+        }
+
+      // Second approach: explicit transport using the external transport library
+      } else if (channel_method == "explicit") {
+
+        if (!transport_dnp(remaining_time, time, site, p)) {
+
+          x = site->r.x;
+          y = site->r.y;
+          z = site->r.z;
+          remaining_time = time;
+
+          // If there is still time, we need to continue to the upper head
+          if (time > 0) {
+            location = "upper_head";
+          // The particle stopped right at the outlet
+          } else {
+            break;
+          }
+        } else {
+          x = site->r.x;
+          y = site->r.y;
+          z = site->r.z;
+          remaining_time = time;
+          break;
+        }
       }
 
     // Travelling in the upper head
@@ -217,7 +252,7 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
           double z = new_z;
           break;
 
-        // Second approach: adjust z linearily, randomly sample x and y 
+        // Second approach: adjust z linearily, randomly sample x and y
         } else if (upper_head_method == "linear_z_random_x_y") {
 
           z += remaining_time * mean_velocity_upper_head;
