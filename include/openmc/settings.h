@@ -178,14 +178,21 @@ extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
 
-extern std::string dnp_drift_library_path; //!< Path to DNP drift library
-extern std::string nekrs_re2_path;     //!< Path to the re2 mesh file from NekRS
-extern std::string nekrs_fld_path;     //!< Path to the field (.fld) file from NekRS
-extern std::string dnp_drift_method;   //!< Integration method to use
-extern double dnp_drift_dt;            //!< Time step used in the integration method [s]
-extern double dnp_drift_external_time; //!< Time for a particle to reenter the system [s]
-extern bool dnp_drift_recycling;       //!< Recycling mode
-extern std::map<std::string, std::vector<int>> dnp_drift_bcs; //!< Translation from boundary conditions to NekRS flag
+extern std::string dnp_drift_method;  //! Method for DNP transport
+extern std::string dnp_drift_model;  //! Preconfigured model used for the DNP drift (optional)
+extern std::string dnp_drift_msre_representation;  //! Represnetation mode for the MSRE model
+extern double dnp_drift_msre_h_channel;  //! Height of the channel for the MSRE model
+extern double dnp_drift_msre_h_upper_head;  //! Height of the upper head for the MSRE model
+extern double dnp_drift_msre_v_upper_head;  //! Velocity in the upper head for the MSRE model
+extern double dnp_drift_msre_v_channel;  //! Velocity in the channel for the MSRE model
+extern std::string dnp_drift_library_path;  //!< Path to DNP drift library
+extern std::string dnp_drift_mesh_path;  //!< Path to the re2 mesh file from NekRS
+extern std::string dnp_drift_field_path;  //!< Path to the field (.fld) file from NekRS
+extern std::string dnp_drift_integration_method;  //!< Integration method to use
+extern double dnp_drift_dt;  //!< Time step used in the integration method [s]
+extern bool dnp_drift_recycling;  //! Boundary recycling
+extern double dnp_drift_external_time = -1.0;  //!< Time for a particle to reenter the system [s]
+extern std::map<std::string, std::vector<int>> dnp_drift_bcs;  //!< Translation from boundary conditions to NekRS flag
 
 } // namespace settings
 

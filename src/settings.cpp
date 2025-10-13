@@ -144,13 +144,20 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
-std::string dnp_drift_library_path;
-std::string nekrs_re2_path;
-std::string nekrs_fld_path;
 std::string dnp_drift_method;
+std::string dnp_drift_model;
+std::string dnp_drift_msre_representation;
+double dnp_drift_msre_h_channel;
+double dnp_drift_msre_h_upper_head;
+double dnp_drift_msre_v_upper_head;
+double dnp_drift_msre_v_channel;
+std::string dnp_drift_library_path;
+std::string dnp_drift_mesh_path;
+std::string dnp_drift_field_path;
+std::string dnp_drift_integration_method;
 double dnp_drift_dt;
-double dnp_drift_external_time;
 bool dnp_drift_recycling;
+double dnp_drift_external_time = -1.0;
 std::map<std::string, std::vector<int>> dnp_drift_bcs;
 
 } // namespace settings
@@ -786,76 +793,162 @@ void read_settings_xml(pugi::xml_node root)
 
     // Get pointer to precursor_drift node
     auto node_drift = root.child("precursor_drift");
-
-    // External library path
-    if (check_for_node(node_drift, "library_path")) {
-      dnp_drift_library_path = get_node_value(node_drift, "library_path");
-    } else {
-      fatal_error("A path to the external library should be defined.");
-    }
-
-    // NekRS mesh path
-    if (check_for_node(node_drift, "nekrs_re2_path")) {
-      nekrs_re2_path = get_node_value(node_drift, "nekrs_re2_path");
-    } else {
-      fatal_error("A path to the NekRS mesh file should be defined.");
-    }
-
-    // NekRS field path
-    if (check_for_node(node_drift, "nekrs_fld_path")) {
-      nekrs_fld_path = get_node_value(node_drift, "nekrs_fld_path");
-    } else {
-      fatal_error("A path to the NekRS field file should be defined.");
-    }
-
-    // Integration method
+    
+    // Method
     if (check_for_node(node_drift, "method")) {
       dnp_drift_method = get_node_value(node_drift, "method");
     } else {
-      fatal_error("An integration method for the precursor drift should be defined.");
+      fatal_error("A method to transport delayed neutron precursors must be selected.");
     }
 
-    // Time step
-    if (check_for_node(node_drift, "time_step")) {
-      dnp_drift_dt = std::stod(get_node_value(node_drift, "time_step"));
+    // Model (optional)
+    if (check_for_node(node_drift, "model")) {
+      dnp_drift_model = get_node_value(node_drift, "model");
+      if (dnp_drift_model == "msre") {
+        // Method-independent keywords associated with the msre model
+
+        // MSRE representation
+        if (check_for_node(node_drift, "msre_representation")) {
+          dnp_drift_msre_representation =
+            get_node_value(node_drift, "msre_representation");
+          if (dnp_drift_msre_representation != "channel" ||
+              dnp_drift_msre_representation != "channel_upper_head") {
+            fatal_error("The representation for the msre model should be "
+                        "'chanel' or 'channel_upper_head'");
+          }
+        } else {
+          fatal_error("A representation must be selected for the msre model.");
+        }
+
+        // MSRE channel height
+        if (check_for_node(node_drift, "msre_channel_height")) {
+          dnp_drift_msre_h_channel = get_node_value(node_drift, "msre_channel_height");
+        } else {
+          fatal_error("The channel height for the msre model must be defined.");
+        }
+
+        // MSRE upper head height
+        if (check_for_node(node_drift, "msre_upper_head_height")) {
+          dnp_drift_msre_h_upper_head = get_node_value(node_drift, "msre_upper_head_height");
+        } else {
+          fatal_error("The upper head height for the msre model must be defined.");
+        }
+
+        // MSRE upper head velocity
+        if (check_for_node(node_drift, "msre_upper_head_velocity")) {
+          dnp_drift_msre_v_upper_head = get_node_value(node_drift, "msre_upper_head_velocity");
+        } else {
+          fatal_error("The upper head velocity for the msre model must be defined.");
+        }
+
+      } else {
+        fatal_error("Unrecognized model for DNP drift: " + temp_str);
+      }
+    }
+
+    // Keywords associated with the streamline method 
+    if (dnp_drift_method == "streamline") {
+
+      // External library path
+      if (check_for_node(node_drift, "transport_library_path")) {
+        dnp_drift_library_path = get_node_value(node_drift, "transport_library_path");
+      } else {
+        fatal_error("A path to the transport library must be defined.");
+      }
+
+      // NekRS mesh path
+      if (check_for_node(node_drift, "mesh_path")) {
+        dnp_drift_mesh_path = get_node_value(node_drift, "mesh_path");
+      } else {
+        fatal_error("A path to the NekRS mesh file (.re2) must be defined.");
+      }
+
+      // NekRS velocity field path
+      if (check_for_node(node_drift, "velocity_field_path")) {
+        dnp_drift_field_path = get_node_value(node_drift, "velocity_field_path");
+      } else {
+        fatal_error("A path to the NekRS velocity field file (.fld) must be defined.");
+      }
+
+      // Integration method
+      if (check_for_node(node_drift, "integration_method")) {
+        dnp_drift_integration_method = get_node_value(node_drift, "integration_method");
+      } else {
+        fatal_error("An integration method for the transport of precursors must be defined.");
+      }
+
+      // Integration time step
+      if (check_for_node(node_drift, "integration_time_step")) {
+        dnp_drift_dt = std::stod(get_node_value(node_drift, "integration_time_step"));
+      } else {
+        fatal_error("An integration time step for the transport of precursors must be defined.");
+      }
+
+      // External travel time
+      if (check_for_node(node_drift, "external_travel_time")) {
+        dnp_drift_external_time = std::stod(get_node_value(node_drift, "external_travel_time"));
+      }
+
+      // Recycling mode
+      if (check_for_node(node_drift, "boundary_recycling")) {
+        dnp_drift_recycling = get_node_value_bool(node_drift, "boundary_recycling");
+
+        // If boundary recycling, verify that we have external travel time
+        if (dnp_drift_recycling && dnp_drift_external_time < 0.) {
+          fatal_error(
+            "The external travel time must be defined if the boundary recycling mode "
+            "is used for precursor drift.");
+        }
+
+        // If no boundary recylcing but external travel time defined, warn that it will not be used
+        if (!dnp_drift_recycling && dnp_drift_external_time >= 0.) {
+          warning(
+            "An external travel time has been defined for precursor drift, but "
+            "the boundary recycling mode is off. This value will be ignored.");
+        }
+      } else {
+        fatal_error("The use of the boundary recycling mode for the precursor drift method must be defined.");
+      }
+
+      // Boundary conditions - Inlet
+      if (check_for_node(node_drift, "bc_idx_inlet")) {
+        dnp_drift_bcs["inlet"] = get_node_array<int>(node_drift, "bc_idx_inlet");
+      } else {
+        fatal_error("Inlet boundary condition should be defined.");
+      }
+
+      // Boundary conditions - Outlet
+      if (check_for_node(node_drift, "bc_idx_outlet")) {
+        dnp_drift_bcs["outlet"] = get_node_array<int>(node_drift, "bc_idx_outlet");
+      } else {
+        fatal_error("Outlet boundary condition should be defined.");
+      }
+
+      // Boundary conditions - Walls (optional)
+      if (check_for_node(node_drift, "bc_idx_walls")) {
+        dnp_drift_bcs["walls"] = get_node_array<int>(node_drift, "bc_idx_walls");
+      }
+
+    } else if (dnp_drift_method == "residence-time");
+
+      if (dnp_drift_model != "msre") {
+        fatal_error("The residence time method for the precursor drift is only available with the 'msre' model.");
+      }
+
+      // Method-dependent keywords associated with the msre model
+
+      // MSRE channel velocity
+      if (check_for_node(node_drift, "msre_channel_velocity")) {
+        dnp_drift_msre_v_channel = get_node_array<int>(node_drift, "msre_channel_velocity");
+      } else {
+        fatal_error("The channel velocity for the msre model must be defined.");
+      }
+
     } else {
-      fatal_error("A time step for the precursor drift method should be defined.");
+      fatal_error("Unrecognized method for DNP drift: " + dnp_drift_method);
     }
 
-    // External travel time
-    if (check_for_node(node_drift, "external_travel_time")) {
-      dnp_drift_external_time = std::stod(get_node_value(node_drift, "external_travel_time"));
-    } else {
-      fatal_error("An external travel time for the precursor drift method should be defined.");
-    }
-
-    // Recycling mode
-    if (check_for_node(node_drift, "recycling")) {
-      dnp_drift_recycling = get_node_value_bool(node_drift, "recycling");
-    } else {
-      fatal_error("Recycling mode use for the precursor drift method should be defined.");
-    }
-
-    // Boundary conditions - Inlet
-    if (check_for_node(node_drift, "bc_idx_inlet")) {
-      dnp_drift_bcs["inlet"] = get_node_array<int>(node_drift, "bc_idx_inlet");
-    } else {
-      fatal_error("Inlet boundary condition should be defined.");
-    }
-
-    // Boundary conditions - Outlet
-    if (check_for_node(node_drift, "bc_idx_outlet")) {
-      dnp_drift_bcs["outlet"] = get_node_array<int>(node_drift, "bc_idx_outlet");
-    } else {
-      fatal_error("Outlet boundary condition should be defined.");
-    }
-
-    // Boundary conditions - Walls (optional)
-    if (check_for_node(node_drift, "bc_idx_walls")) {
-      dnp_drift_bcs["walls"] = get_node_array<int>(node_drift, "bc_idx_walls");
-    }
-
-    // Turn on precursor drift
+    // Turn precursor drift on
     precursor_drift = true;
 
   }

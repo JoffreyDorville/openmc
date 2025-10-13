@@ -159,26 +159,40 @@ class Settings:
         Whether to model delayed neutron precursor drift or not. Acceptable
         keys are:
 
-        :library_path:
-            Path to the external library
-        :nekrs_re2_path:
-            Path to the re2 mesh file from NekRS
-        :nekrs_fld_path:
-            Path to the field (.fld) file from NekRS
         :method:
+            Transport method (streamline or residence-time)
+        :model:
+            Preconfigured model (optional)
+        :transport_library_path:
+            Path to the external library
+        :mesh_path:
+            Path to the re2 mesh file from NekRS
+        :velocity_field_path:
+            Path to the field (.fld) file from NekRS
+        :integration_method:
             Integration method to use
-        :time_step:
+        :integration_time_step:
             Time step used in the integration method
+        :boundary_recycling:
+            Boundary recycling mode on or off
         :external_travel_time:
             Time for a particle to reenter the system
-        :recycling:
-            Recycling mode on or off
         :bc_idx_inlet:
             Translation from inlet boundary conditions to NekRS flag
         :bc_idx_outlet:
             Translation from outlet boundary conditions to NekRS flag
         :bc_idx_walls:
             Translation from walls boundary conditions to NekRS flag
+        :msre_representation:
+            Representation mode for the MSRE model (channel or channel_upper_head)
+        :msre_channel_height:
+            Channel height for the MSRE model
+        :msre_channel_velocity:
+            Velocity in the channel for the MSRE model
+        :msre_upper_head_height:
+            Upper head height for the MSRE model
+        :msre_upper_head_velocity:
+            Velocity in the upper head for the MSRE model
 
     plot_seed : int
        Initial seed for randomly generated plot colors.
@@ -710,17 +724,35 @@ class Settings:
     def precursor_drift(self, precursor_drift: dict):
         cv.check_type('precursor drift options', precursor_drift, Mapping)
         for key, value in precursor_drift.items():
-            if key in ["library_path", "nekrs_re2_path", "nekrs_fld_path"]:
+            if key in ["transport_library_path", "mesh_path", "velocity_field_path"]:
                 cv.check_type("precursor drift paths", value, str)
-            elif key == "method":
+            elif key == "method": 
                 cv.check_type("precursor drift method", value, str)
-            elif key == "time_step":
-                cv.check_type('precursor drift time step', value, Real)
-                cv.check_greater_than('precursor drift time step', value, 0.0)
+            elif key == "model": 
+                cv.check_type("precursor drift model", value, str)
+            elif key == "msre_representation": 
+                cv.check_type("precursor drift model", value, str)
+            elif key == "msre_channel_height": 
+                cv.check_type("precursor drift msre_channel_height", value, Real)
+                cv.check_greater_than("precursor drift msre_channel_height", value, 0.0)
+            elif key == "msre_channel_velocity": 
+                cv.check_type("precursor drift msre_channel_height", value, Real)
+                cv.check_greater_than("precursor drift msre_channel_height", value, 0.0)
+            elif key == "msre_upper_head_height": 
+                cv.check_type("precursor drift msre_upper_head_height", value, Real)
+                cv.check_greater_than("precursor drift msre_upper_head_height", value, 0.0)
+            elif key == "msre_upper_head_velocity": 
+                cv.check_type("precursor drift msre_upper_head_velocity", value, Real)
+                cv.check_greater_than("precursor drift msre_upper_head_velocity", value, 0.0)
+            elif key == "integration_method": 
+                cv.check_type("precursor drift integration_method", value, str)
+            elif key == "integration_time_step":
+                cv.check_type('precursor drift integration_time_step', value, Real)
+                cv.check_greater_than('precursor drift integration_time_step', value, 0.0)
+            elif key == "boundary_recycling":
+                cv.check_type('precursor drift boundary_recycling', value, bool)
             elif key == "external_travel_time":
                 cv.check_type('precursor drift external travel time', value, Real)
-            elif key == "recycling":
-                cv.check_type('precursor drift recycling', value, bool)
             elif key in ["bc_idx_inlet", "bc_idx_outlet", "bc_idx_walls"]:
                 cv.check_type('precursor drift boundary conditions', value, Iterable, Integral)
                 for val in value:
@@ -1993,14 +2025,45 @@ class Settings:
     def _precursor_drift_from_xml_element(self, root):
         elem = root.find('precursor_drift')
         if elem is not None:
-            for key in ('nekrs_re2_path', 'nekrs_fld_path', 'method', 'time_step', 'external_travel_time', 'recycling', 'bc_idx_inlet', 'bc_idx_outlet', 'bc_idx_walls'):
+            for key in (
+                'method',
+                'model',
+                'transport_library_path',
+                'mesh_path',
+                'velocity_field_path',
+                'integration_method',
+                'integration_time_step',
+                'boundary_recycling',
+                'external_travel_time',
+                'bc_idx_inlet',
+                'bc_idx_outlet',
+                'bc_idx_walls',
+                'msre_representation',
+                'msre_channel_height',
+                'msre_channel_velocity',
+                'msre_upper_head_height',
+                'msre_upper_head_velocity'
+                ):
                 value = get_text(elem, key)
                 if value is not None:
-                    if key in ('library_path', 'nekrs_re2_path', 'nekrs_fld_path', 'method'):
+                    if key in (
+                        'method',
+                        'model',
+                        'transport_library_path',
+                        'mesh_path',
+                        'velocity_field_path',
+                        'integration_method',
+                        'msre_representation'):
                         self.precursor_drift[key] = value
-                    if key == 'recycling':
+                    if key == 'boundary_recycling':
                         self.precursor_drift[key] = value in ('true', '1')
-                    if key in ('time_step', 'external_travel_time'):
+                    if key in (
+                        'integration_time_step',
+                        'external_travel_time',
+                        'msre_channel_height',
+                        'msre_channel_velocity',
+                        'msre_upper_head_height',
+                        'msre_upper_head_velocity'):
                         self.precursor_drift[key] = float(value)
                     if key in ('bc_idx_inlet', 'bc_idx_outlet', 'bc_idx_walls'):
                         self.precursor_drift[key] = [int(x) for x in value.split()]
