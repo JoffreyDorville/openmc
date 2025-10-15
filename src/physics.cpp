@@ -223,7 +223,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         double dnp_decay_time = site.time - p.time();
 
         // Transport DNP
-        if (!transport_dnp_msre(dnp_decay_time, &site, p)) {
+        if (!transport_dnp(dnp_decay_time, &site, p)) {
           continue;
         }
       }
