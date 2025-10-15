@@ -157,7 +157,7 @@ std::string dnp_drift_field_path;
 std::string dnp_drift_integration_method;
 double dnp_drift_dt;
 bool dnp_drift_recycling;
-double dnp_drift_external_time = -1.0;
+double dnp_drift_external_time;
 std::map<std::string, std::vector<int>> dnp_drift_bcs;
 
 } // namespace settings
@@ -811,10 +811,10 @@ void read_settings_xml(pugi::xml_node root)
         if (check_for_node(node_drift, "msre_representation")) {
           dnp_drift_msre_representation =
             get_node_value(node_drift, "msre_representation");
-          if (dnp_drift_msre_representation != "channel" ||
+          if (dnp_drift_msre_representation != "channel" &&
               dnp_drift_msre_representation != "channel_upper_head") {
             fatal_error("The representation for the msre model should be "
-                        "'chanel' or 'channel_upper_head'");
+                        "'channel' or 'channel_upper_head'");
           }
         } else {
           fatal_error("A representation must be selected for the msre model.");
@@ -822,27 +822,29 @@ void read_settings_xml(pugi::xml_node root)
 
         // MSRE channel height
         if (check_for_node(node_drift, "msre_channel_height")) {
-          dnp_drift_msre_h_channel = get_node_value(node_drift, "msre_channel_height");
+          dnp_drift_msre_h_channel = std::stod(get_node_value(node_drift, "msre_channel_height"));
         } else {
           fatal_error("The channel height for the msre model must be defined.");
         }
 
-        // MSRE upper head height
-        if (check_for_node(node_drift, "msre_upper_head_height")) {
-          dnp_drift_msre_h_upper_head = get_node_value(node_drift, "msre_upper_head_height");
-        } else {
-          fatal_error("The upper head height for the msre model must be defined.");
-        }
+        if (dnp_drift_msre_representation == "channel_upper_head") {
 
-        // MSRE upper head velocity
-        if (check_for_node(node_drift, "msre_upper_head_velocity")) {
-          dnp_drift_msre_v_upper_head = get_node_value(node_drift, "msre_upper_head_velocity");
-        } else {
-          fatal_error("The upper head velocity for the msre model must be defined.");
-        }
+          // MSRE upper head height
+          if (check_for_node(node_drift, "msre_upper_head_height")) {
+            dnp_drift_msre_h_upper_head = std::stod(get_node_value(node_drift, "msre_upper_head_height"));
+          } else {
+            fatal_error("The upper head height for the msre model must be defined.");
+          }
 
+          // MSRE upper head velocity
+          if (check_for_node(node_drift, "msre_upper_head_velocity")) {
+            dnp_drift_msre_v_upper_head = std::stod(get_node_value(node_drift, "msre_upper_head_velocity"));
+          } else {
+            fatal_error("The upper head velocity for the msre model must be defined.");
+          }
+        }
       } else {
-        fatal_error("Unrecognized model for DNP drift: " + temp_str);
+        fatal_error("Unrecognized model for DNP drift: " + dnp_drift_model);
       }
     }
 
@@ -887,25 +889,16 @@ void read_settings_xml(pugi::xml_node root)
       // External travel time
       if (check_for_node(node_drift, "external_travel_time")) {
         dnp_drift_external_time = std::stod(get_node_value(node_drift, "external_travel_time"));
+        if (dnp_drift_external_time < 0) {
+          fatal_error("The external travel time for the transport of precursors must be greater than or equal to 0.");
+        }
+      } else {
+        fatal_error("An external travel time for the transport of precursors must be defined.");
       }
 
       // Recycling mode
       if (check_for_node(node_drift, "boundary_recycling")) {
         dnp_drift_recycling = get_node_value_bool(node_drift, "boundary_recycling");
-
-        // If boundary recycling, verify that we have external travel time
-        if (dnp_drift_recycling && dnp_drift_external_time < 0.) {
-          fatal_error(
-            "The external travel time must be defined if the boundary recycling mode "
-            "is used for precursor drift.");
-        }
-
-        // If no boundary recylcing but external travel time defined, warn that it will not be used
-        if (!dnp_drift_recycling && dnp_drift_external_time >= 0.) {
-          warning(
-            "An external travel time has been defined for precursor drift, but "
-            "the boundary recycling mode is off. This value will be ignored.");
-        }
       } else {
         fatal_error("The use of the boundary recycling mode for the precursor drift method must be defined.");
       }
@@ -929,7 +922,7 @@ void read_settings_xml(pugi::xml_node root)
         dnp_drift_bcs["walls"] = get_node_array<int>(node_drift, "bc_idx_walls");
       }
 
-    } else if (dnp_drift_method == "residence-time");
+    } else if (dnp_drift_method == "residence-time") {
 
       if (dnp_drift_model != "msre") {
         fatal_error("The residence time method for the precursor drift is only available with the 'msre' model.");
@@ -939,7 +932,7 @@ void read_settings_xml(pugi::xml_node root)
 
       // MSRE channel velocity
       if (check_for_node(node_drift, "msre_channel_velocity")) {
-        dnp_drift_msre_v_channel = get_node_array<int>(node_drift, "msre_channel_velocity");
+        dnp_drift_msre_v_channel = std::stod(get_node_value(node_drift, "msre_channel_velocity"));
       } else {
         fatal_error("The channel velocity for the msre model must be defined.");
       }
@@ -950,7 +943,6 @@ void read_settings_xml(pugi::xml_node root)
 
     // Turn precursor drift on
     precursor_drift = true;
-
   }
 
   // Uniform fission source weighting mesh
