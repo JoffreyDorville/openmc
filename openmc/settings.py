@@ -736,8 +736,8 @@ class Settings:
                 cv.check_type("precursor drift msre_channel_height", value, Real)
                 cv.check_greater_than("precursor drift msre_channel_height", value, 0.0)
             elif key == "msre_channel_velocity": 
-                cv.check_type("precursor drift msre_channel_height", value, Real)
-                cv.check_greater_than("precursor drift msre_channel_height", value, 0.0)
+                cv.check_type("precursor drift msre_channel_velocity", value, Real)
+                cv.check_greater_than("precursor drift msre_channel_velocity", value, 0.0)
             elif key == "msre_upper_head_height": 
                 cv.check_type("precursor drift msre_upper_head_height", value, Real)
                 cv.check_greater_than("precursor drift msre_upper_head_height", value, 0.0)
