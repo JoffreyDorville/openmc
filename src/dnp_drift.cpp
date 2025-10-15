@@ -57,14 +57,11 @@ bool transport_dnp(double dnp_decay_time, SourceSite* site, Particle& p)
 bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
 {
   // MSRE characteristics
-  double h_channel = 170.311;
-  double mean_velocity_channel = settings::dnp_drift_dt; // Use dritf_dt settings as the mean velocity channel
-  double h_upper_head = 17.13;
-  double mean_velocity_upper_head = h_upper_head / 3.9;
+  double h_channel = settings::dnp_drift_msre_h_channel;
+  double h_upper_head = settings::dnp_drift_msre_h_upper_head;
+  double mean_velocity_upper_head = settings::dnp_drift_msre_v_upper_head;
 
   // Method selection
-  //std::string channel_method = "residence_time";
-  std::string channel_method = "explicit";
   std::string upper_head_method = "random";
   //std::string upper_head_method = "linear_z_random_x_y";
 
@@ -79,12 +76,20 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
 
   // Define location from coordinates
   std::string location;
-  if (z <= h_channel) {
-    location = "channel";
-  } else if (z <= (h_channel + h_upper_head)) {
-    location = "upper_head";
-  } else {
-    throw std::runtime_error {"Unknown location!"};
+  if (settings::dnp_drift_msre_representation == "channel") {
+    if (z <= h_channel && z >= 0.) {
+      location = "channel";
+    } else {
+      throw std::runtime_error {"Unknown location!"};
+    }
+  } else if (settings::dnp_drift_msre_representation == "channel_upper_head") {
+    if (z <= h_channel) {
+      location = "channel";
+    } else if (z <= (h_channel + h_upper_head)) {
+      location = "upper_head";
+    } else {
+      throw std::runtime_error {"Unknown location!"};
+    }
   }
 
   // Transport
@@ -94,37 +99,50 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
     if (location == "channel") {
 
       // First approach: residence time
-      if (channel_method == "residence_time") {
+      if (settings::dnp_drift_method == "residence-time") {
 
         dist = h_channel - z;
-        time = dist / mean_velocity_channel;
+        time = dist / settings::dnp_drift_msre_v_channel;
 
         // Decay in the channel for this iteration
         if (time > remaining_time) {
-          z += remaining_time * mean_velocity_channel;
+          z += remaining_time * settings::dnp_drift_msre_v_channel;
           remaining_time = 0.;
           break;
 
         // Continue to next location
         } else {
-          location = "upper_head";
+          if (settings::dnp_drift_msre_representation == "channel") {
+            location = "outside";
+          } else if (settings::dnp_drift_msre_representation == "channel_upper_head") {
+            location = "upper_head";
+          } else {
+            fatal_error("Not implemented yet.");
+          }
           z = h_channel;
           remaining_time -= time;
         }
 
       // Second approach: explicit transport using the external transport library
-      } else if (channel_method == "explicit") {
+      } else if (settings::dnp_drift_method == "streamline") {
 
-        if (!transport_dnp(remaining_time, time, site, p)) {
+        if (!simulation::dnp_transport(
+          site->r.x, site->r.y, site->r.z, time, remaining_time, *p.current_seed())) {
 
           x = site->r.x;
           y = site->r.y;
           z = site->r.z;
           remaining_time = time;
 
-          // If there is still time, we need to continue to the upper head
-          if (time > 0) {
-            location = "upper_head";
+          // If there is still time, we need to continue to the next part
+          if (remaining_time > 0) {
+            if (settings::dnp_drift_msre_representation == "channel") {
+              location = "outside";
+            } else if (settings::dnp_drift_msre_representation == "channel_upper_head") {
+              location = "upper_head";
+            } else {
+              fatal_error("Not implemented yet.");
+            }
           // The particle stopped right at the outlet
           } else {
             break;
@@ -168,9 +186,9 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
           double new_y_r = new_x * coef + new_y * coef;
 
           // Store new coordinates
-          double x = new_x_r;
-          double y = new_y_r;
-          double z = new_z;
+          x = new_x_r;
+          y = new_y_r;
+          z = new_z;
           break;
 
         // Second approach: adjust z linearily, randomly sample x and y
