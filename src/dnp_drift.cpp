@@ -9,128 +9,49 @@ namespace openmc {
 
 void initialize_dnp_drift()
 {
-  typedef void (*dnp_init_handle)(std::string, std::string, std::string, double,
-    double, std::map<std::string, std::vector<int>>, bool);
+  if (settings::dnp_drift_method == "streamline") {
+    typedef void (*dnp_init_handle)(std::string, std::string, std::string, double,
+      double, std::map<std::string, std::vector<int>>, bool);
 
-  simulation::dnp_library =
-    dlopen(settings::dnp_drift_library_path.c_str(), RTLD_LAZY);
+    simulation::dnp_library =
+      dlopen(settings::dnp_drift_library_path.c_str(), RTLD_LAZY);
 
-  if (!simulation::dnp_library) {
-    fatal_error("Error loading external library for precursor drift!");
-  }
+    if (!simulation::dnp_library) {
+      fatal_error("Error loading external library for precursor drift!");
+    }
 
-  auto dnp_init = reinterpret_cast<dnp_init_handle>(
-    dlsym(simulation::dnp_library, "initialize"));
-  auto dlsym_error = dlerror();
-  if (dlsym_error) {
-    dlclose(simulation::dnp_library);
-    fatal_error(dlsym_error);
-  }
-  dnp_init(settings::nekrs_re2_path, settings::nekrs_fld_path,
-    settings::dnp_drift_method, settings::dnp_drift_dt,
-    settings::dnp_drift_external_time, settings::dnp_drift_bcs,
-    settings::dnp_drift_recycling);
+    auto dnp_init = reinterpret_cast<dnp_init_handle>(
+      dlsym(simulation::dnp_library, "initialize"));
+    auto dlsym_error = dlerror();
+    if (dlsym_error) {
+      dlclose(simulation::dnp_library);
+      fatal_error(dlsym_error);
+    }
+    dnp_init(settings::dnp_drift_mesh_path, settings::dnp_drift_field_path,
+      settings::dnp_drift_integration_method, settings::dnp_drift_dt,
+      settings::dnp_drift_external_time, settings::dnp_drift_bcs,
+      settings::dnp_drift_recycling);
 
-  simulation::dnp_transport =
-    reinterpret_cast<simulation::dnp_transport_handle>(
-      dlsym(simulation::dnp_library, "transport_site"));
-  dlsym_error = dlerror();
-  if (dlsym_error) {
-    dlclose(simulation::dnp_library);
-    fatal_error(dlsym_error);
-  }
-}
-
-bool transport_dnp(double dnp_decay_time, double& time, SourceSite* site, Particle& p)
-{
-  bool available = simulation::dnp_transport(
-    site->r.x, site->r.y, site->r.z, time, dnp_decay_time, *p.current_seed());
-
-  if (!available) {
-    return false;
-  }
-  return true;
-}
-
-bool transport_dnp_msre_simple(double dnp_decay_time, SourceSite* site, Particle& p)
-{
-  // MSRE characteristics
-  double h_channel = 170.311;
-  double mean_velocity_channel = settings::dnp_drift_dt; // Use dritf_dt settings as the mean velocity channel
-  double h_upper_head = 17.13;
-  double mean_velocity_upper_head = h_upper_head / 3.9;
-
-  // Initialization
-  double x = site->r.x;
-  double y = site->r.y;
-  double z = site->r.z;
-  bool available = true;
-  double remaining_time = dnp_decay_time;
-  double dist;
-  double time;
-
-  // Define location from coordinates
-  std::string location;
-  if (z <= h_channel) {
-    location = "channel";
-  } else if (z <= (h_channel + h_upper_head)) {
-    location = "upper_head";
-  } else {
-    throw std::runtime_error {"Unknown location!"};
-  }
-
-  // Transport
-  while (remaining_time > 0.){
-
-    // Travelling in the channel
-    if (location == "channel") {
-
-      dist = h_channel - z;
-      time = dist / mean_velocity_channel;
-
-      // Decay in the channel for this iteration
-      if (time > remaining_time) {
-        z += remaining_time * mean_velocity_channel;
-        remaining_time = 0.;
-        break;
-
-      // Continue to next location
-      } else {
-        location = "outside";
-        z = h_channel;
-        remaining_time -= time;
-      }
-
-    // Travelling outside
-    } else if (location == "outside") {
-
-      // Decay outside during this iteration
-      if (remaining_time < settings::dnp_drift_external_time) {
-        available = false;
-        remaining_time = 0.;
-        break;
-
-      // Continue to next location
-      } else {
-        location = "channel";
-        remaining_time -= settings::dnp_drift_external_time;
-        z = 0.;
-      }
-
-    // Error
-    } else{ 
-      throw std::runtime_error {"Unknown location!!!"};
+    simulation::dnp_transport =
+      reinterpret_cast<simulation::dnp_transport_handle>(
+        dlsym(simulation::dnp_library, "transport_site"));
+    dlsym_error = dlerror();
+    if (dlsym_error) {
+      dlclose(simulation::dnp_library);
+      fatal_error(dlsym_error);
     }
   }
+}
 
-  site->r.x = x;
-  site->r.y = y;
-  site->r.z = z;
-
-  if (!available) {
-    return false;
+bool transport_dnp(double dnp_decay_time, SourceSite* site, Particle& p)
+{
+  if (settings::dnp_drift_model == "msre") {
+    return transport_dnp_msre(dnp_decay_time, site, p);
+  } else {
+    double time;
+    return simulation::dnp_transport(
+      site->r.x, site->r.y, site->r.z, time, dnp_decay_time, *p.current_seed());
   }
-  return true;
 }
 
 bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
