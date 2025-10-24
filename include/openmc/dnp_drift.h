@@ -30,6 +30,10 @@ bool transport_dnp(double dnp_decay_time, SourceSite* site, Particle& p);
 //! \return true if the DNP is still in the modeled system, false otherwise.
 bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p);
 
+bool is_inside_msre_channel_2d(double x, double y);
+
+void resample_msre_channel_2d(double& x, double& y, Particle& p);
+
 //! Free memory associated with the external transport library.
 void finalize_dnp_drift();
 

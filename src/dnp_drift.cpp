@@ -108,6 +108,11 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
         if (time > remaining_time) {
           z += remaining_time * settings::dnp_drift_msre_v_channel;
           remaining_time = 0.;
+
+          // If x and y were not in the channel, we resample values
+          if (!is_inside_msre_channel_2d(x, y)) {
+            resample_msre_channel_2d(x, y, p);
+          }
           break;
 
         // Continue to next location
@@ -126,12 +131,15 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
       // Second approach: explicit transport using the external transport library
       } else if (settings::dnp_drift_method == "streamline") {
 
-        if (!simulation::dnp_transport(
-          site->r.x, site->r.y, site->r.z, time, remaining_time, *p.current_seed())) {
+        // If x and y were not in the channel, we resample values
+        if (!is_inside_msre_channel_2d(x, y)) {
+          resample_msre_channel_2d(x, y, p);
+        }
 
-          x = site->r.x;
-          y = site->r.y;
-          z = site->r.z;
+        // Transport
+        if (!simulation::dnp_transport(
+          x, y, z, time, remaining_time, *p.current_seed())) {
+
           remaining_time = time;
 
           // If there is still time, we need to continue to the next part
@@ -148,9 +156,6 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
             break;
           }
         } else {
-          x = site->r.x;
-          y = site->r.y;
-          z = site->r.z;
           remaining_time = time;
           break;
         }
@@ -158,6 +163,10 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
 
     // Travelling in the upper head
     } else if (location == "upper_head") {
+
+      // Upper head is residence-time only by default.
+      // Because it has the largest cross-section on the XY plane, we do not verify
+      // that the point is inside the XY cross-section.
 
       dist = (h_channel + h_upper_head) - z;
       time = dist / mean_velocity_upper_head;
@@ -256,6 +265,84 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
     return false;
   }
   return true;
+}
+
+bool is_inside_msre_channel_2d(double x, double y)
+{
+  double IN_TO_CM = 2.54;
+
+  // The 2D cross-section of the MSRE channel is composed of a rectangle and two
+  // disc halves.
+
+  // Verify if point is in rectangle
+  double rect_x_min = -0.2 * IN_TO_CM;
+  double rect_x_max = 0.2 * IN_TO_CM;
+  double rect_y_min = -0.4 * IN_TO_CM;
+  double rect_y_max = 0.4 * IN_TO_CM;
+
+  if ((x >= rect_x_min) && (x <= rect_x_max) && (y >= rect_y_min) &&
+      (y <= rect_y_max)) {
+    return true;
+  }
+
+  // Verify if point is in the first circle
+  double c1_x = 0.0;
+  double c1_y = -0.4 * IN_TO_CM;
+  double c1_r = 0.2 * IN_TO_CM;
+
+  if (sqrt(pow(x - c1_x, 2) + pow(y - c1_y, 2)) <= c1_r) {
+    return true;
+  }
+
+  // Verify if point is in the second circle
+  double c2_x = 0.0;
+  double c2_y = 0.4 * IN_TO_CM;
+  double c2_r = 0.2 * IN_TO_CM;
+
+  if (sqrt(pow(x - c2_x, 2) + pow(y - c2_y, 2)) <= c2_r) {
+    return true;
+  }
+
+  // Return false otherwise
+  return false;
+}
+
+void resample_msre_channel_2d(double& x, double& y, Particle& p)
+{
+  double IN_TO_CM = 2.54;
+
+  // Declare axis-aligned bounding box of the channel cross-section
+  double aabb_min_x = -0.2 * IN_TO_CM;
+  double aabb_max_x = +0.2 * IN_TO_CM;
+  double aabb_min_y = -0.6 * IN_TO_CM;
+  double aabb_max_y = +0.6 * IN_TO_CM;
+
+  // Initialization
+  bool found = false;
+  double sampled_x;
+  double sampled_y;
+  int iter = 0;
+
+  while (!found) {
+
+    if (iter > 1000) {
+      fatal_error("Could not sample a point inside the MSRE channel 2D cross-section!");
+    }
+
+    // Sample positions
+    sampled_x = aabb_min_x + (aabb_max_x - aabb_min_x) * prn(p.current_seed());
+    sampled_y = aabb_min_y + (aabb_max_y - aabb_min_y) * prn(p.current_seed());
+
+    // Check if the sampled positions are inside the channel cross-section
+    if (is_inside_msre_channel_2d(sampled_x, sampled_y)) {
+      found = true;
+      x = sampled_x;
+      y = sampled_y;
+      break;
+    }
+
+    iter++;
+  }
 }
 
 void finalize_dnp_drift()
