@@ -848,6 +848,16 @@ void read_settings_xml(pugi::xml_node root)
       }
     }
 
+    // External travel time
+    if (check_for_node(node_drift, "external_travel_time")) {
+      dnp_drift_external_time = std::stod(get_node_value(node_drift, "external_travel_time"));
+      if (dnp_drift_external_time < 0) {
+        fatal_error("The external travel time for the transport of precursors must be greater than or equal to 0.");
+      }
+    } else {
+      fatal_error("An external travel time for the transport of precursors must be defined.");
+    }
+
     // Keywords associated with the streamline method 
     if (dnp_drift_method == "streamline") {
 
@@ -884,16 +894,6 @@ void read_settings_xml(pugi::xml_node root)
         dnp_drift_dt = std::stod(get_node_value(node_drift, "integration_time_step"));
       } else {
         fatal_error("An integration time step for the transport of precursors must be defined.");
-      }
-
-      // External travel time
-      if (check_for_node(node_drift, "external_travel_time")) {
-        dnp_drift_external_time = std::stod(get_node_value(node_drift, "external_travel_time"));
-        if (dnp_drift_external_time < 0) {
-          fatal_error("The external travel time for the transport of precursors must be greater than or equal to 0.");
-        }
-      } else {
-        fatal_error("An external travel time for the transport of precursors must be defined.");
       }
 
       // Recycling mode
