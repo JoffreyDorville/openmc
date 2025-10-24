@@ -108,11 +108,6 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
         if (time > remaining_time) {
           z += remaining_time * settings::dnp_drift_msre_v_channel;
           remaining_time = 0.;
-
-          // If x and y were not in the channel, we resample values
-          if (!is_inside_msre_channel_2d(x, y)) {
-            resample_msre_channel_2d(x, y, p);
-          }
           break;
 
         // Continue to next location
@@ -130,11 +125,6 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
 
       // Second approach: explicit transport using the external transport library
       } else if (settings::dnp_drift_method == "streamline") {
-
-        // If x and y were not in the channel, we resample values
-        if (!is_inside_msre_channel_2d(x, y)) {
-          resample_msre_channel_2d(x, y, p);
-        }
 
         // Transport
         if (!simulation::dnp_transport(
@@ -244,11 +234,16 @@ bool transport_dnp_msre(double dnp_decay_time, SourceSite* site, Particle& p)
         remaining_time = 0.;
         break;
 
-      // Continue to next location
+      // Continue to the channel
       } else {
         location = "channel";
         remaining_time -= settings::dnp_drift_external_time;
         z = 0.;
+
+        // If x and y are not in the channel cross-section, we resample x and y
+        if (!is_inside_msre_channel_2d(x, y)) {
+          resample_msre_channel_2d(x, y, p);
+        }
       }
 
     // Error
